@@ -41,6 +41,9 @@ export default function MapView({ center, path, stops, start, me, fitKey, follow
     const m = L.map(el.current, { zoomControl: false, attributionControl: true }).setView([center.lat, center.lng], 15);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
+      // CORS-readable tiles: the service worker can then cache them at their real size
+      // (opaque responses are counted as several MB each against the storage quota).
+      crossOrigin: true,
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(m);
     L.control.zoom({ position: 'bottomleft' }).addTo(m);

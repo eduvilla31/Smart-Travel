@@ -26,11 +26,17 @@ export function saveCached(key: string, value: unknown): void {
   save(key, { t: Date.now(), v: value });
 }
 
-export async function fetchJson<T>(url: string, init: RequestInit = {}, timeoutMs = 12000): Promise<T> {
+export async function fetchJson<T>(url: string, init: RequestInit = {}, timeoutMs = 12000, retries = 1): Promise<T> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(url, { ...init, signal: ctrl.signal });
+    // Free services throttle bursts: wait a moment and try once more.
+    if ((res.status === 429 || res.status === 503) && retries > 0) {
+      clearTimeout(timer);
+      await new Promise((r) => setTimeout(r, 1500));
+      return fetchJson<T>(url, init, timeoutMs, retries - 1);
+    }
     if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
     return (await res.json()) as T;
   } finally {

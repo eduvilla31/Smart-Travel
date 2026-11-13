@@ -1,15 +1,16 @@
-import { useI18n } from '../i18n';
+import { loc, useI18n } from '../i18n';
+import { useCity } from '../city';
 import type { ContextState } from '../App';
 import { NOTE_ICON } from '../lib/context';
-import { CITY } from '../lib/places';
 
 /** "Today in Basel": strikes, closures, events, each with its source link. */
 export default function ContextCard({ context }: { context: ContextState }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const city = useCity();
   if (context.status === 'off') return null;
   return (
     <section className="card context-card" aria-live="polite">
-      <h3>📰 {t('todayIn', { city: CITY.city.name })}</h3>
+      <h3>📰 {t('todayIn', { city: loc(city.city.name, lang) })}</h3>
       {context.status === 'loading' && <p className="muted small">{t('contextLoading')}</p>}
       {context.status === 'error' && <p className="muted small">{t('contextFailed')}</p>}
       {context.status === 'ok' && context.notes.length === 0 && <p className="muted small">{t('contextNone')}</p>}

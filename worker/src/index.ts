@@ -14,15 +14,20 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
   /** Optional shared code friends type into the app, so strangers can't spend your credits. */
   ACCESS_CODE?: string;
+  /** Set to "true" to run without an access code (anyone with the URL can then spend your credits). */
+  OPEN_ACCESS?: string;
+  /** claude-haiku-5-5 (default, cheapest) or claude-opus-5-5 (best quality, about 40x the price). */
   MODEL?: string;
   /** Set when this code runs inside the phone app with the user's own key. */
   browser?: boolean;
 }
 
-const DEFAULT_MODEL = 'claude-opus-5-5';
-// If a safety classifier declines a request, the API retries it on Anthropic's
-// recommended fallback model instead of returning an empty refusal.
-const BETAS: Anthropic.Beta.AnthropicBeta[] = ['server-side-fallback-2026-07-01'];
+const DEFAULT_MODEL = 'claude-haiku-5-5';
+// On Opus, if a safety classifier declines a request, the API retries it on Anthropic's
+// recommended fallback model. Haiku has no server-side fallback, so it is sent without.
+const FALLBACK_BETAS: Anthropic.Beta.AnthropicBeta[] = ['server-side-fallback-2026-07-01'];
+const isHaiku = (model: string) => model.startsWith('claude-haiku');
+const modelOf = (env: Env) => env.MODEL || DEFAULT_MODEL;
 const LANG_NAME: Record<string, string> = { en: 'English', es: 'Spanish', de: 'German' };
 
 type Lang = 'en' | 'es' | 'de';
@@ -59,22 +64,23 @@ async function sha256(s: string): Promise<string> {
 
 /** Cache a JSON result in the Workers cache, keyed by endpoint + request body. */
 async function cached<T>(name: string, keyMaterial: string, ttlSec: number, make: () => Promise<T>): Promise<T> {
-  const cache = (caches as unknown as { default: Cache }).default;
+  // The cache is best-effort: if it is unavailable, just do the work.
+  const cache = (globalThis as { caches?: { default?: Cache } }).caches?.default;
   const key = new Request(`https://cache.smart-travel.internal/${name}/${await sha256(keyMaterial)}`);
-  const hit = await cache.match(key);
+  const hit = await cache?.match(key).catch(() => undefined);
   if (hit) return hit.json() as Promise<T>;
   const value = await make();
-  await cache.put(key, new Response(JSON.stringify(value), { headers: { 'Cache-Control': `max-age=${ttlSec}` } }));
+  await cache?.put(key, new Response(JSON.stringify(value), { headers: { 'Cache-Control': `max-age=${ttlSec}` } })).catch(() => undefined);
   return value;
 }
 
 async function ask(env: Env, params: Params): Promise<Anthropic.Beta.BetaMessage> {
   // In "own key" mode the app calls Claude straight from the phone; the key never leaves that device.
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, dangerouslyAllowBrowser: !!env.browser });
+  const model = modelOf(env);
   const res = await client.beta.messages.create({
-    model: env.MODEL || DEFAULT_MODEL,
-    betas: BETAS,
-    fallbacks: 'default',
+    model,
+    ...(isHaiku(model) ? {} : { betas: FALLBACK_BETAS, fallbacks: 'default' as const }),
     ...params,
   });
   if (res.stop_reason === 'refusal') throw new HttpError(422, 'The model declined this request.');
@@ -88,6 +94,10 @@ function jsonOutput<T>(res: Anthropic.Beta.BetaMessage): T {
 }
 
 const asLang = (l: unknown): Lang => (l === 'es' || l === 'de' ? l : 'en');
+
+/** Keep user- and map-supplied text from breaking out of the prompt's XML tags. */
+const clean = (s: unknown, max = 200) => String(s ?? '').replace(/[<>"]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 
 // ---------- /narrate ----------
 
@@ -116,6 +126,7 @@ function narrationSystem(lang: Lang): string {
 async function narrate(env: Env, input: NarrateIn): Promise<NarrateOut> {
   const lang = asLang(input.lang);
   if (!input.name) throw new HttpError(400, 'name is required');
+  input = { ...input, name: clean(input.name), facts: input.facts?.slice(0, 6000), wiki: (input.wiki ?? []).slice(0, 6).map((w) => clean(w)) };
   let source: WikiText | null = null;
   const target = input.wiki?.length ? await resolveArticle(input.wiki, lang) : null;
   if (target) source = await fetchArticle(target.lang, target.title, { maxChars: 10000 }).catch(() => null);
@@ -154,6 +165,7 @@ interface IdentifyIn {
   accuracy?: number;
   heading?: number | null;
   lang?: string;
+  city?: string;
   candidates: Candidate[];
 }
 export interface IdentifyOut {
@@ -193,8 +205,14 @@ function compass(deg: number): string {
 
 async function identify(env: Env, input: IdentifyIn): Promise<IdentifyOut> {
   const lang = asLang(input.lang);
-  if (!input.image || input.image.length > 2_800_000) throw new HttpError(400, 'Image missing or larger than about 2 MB.');
-  const candidates = (input.candidates ?? []).slice(0, 10);
+  if (typeof input.image !== 'string' || !input.image || input.image.length > 2_800_000) throw new HttpError(400, 'Image missing or larger than about 2 MB.');
+  if (!isNum(input.lat) || !isNum(input.lng)) throw new HttpError(400, 'lat and lng are required');
+  const mediaType = (['image/jpeg', 'image/png', 'image/webp'] as const).find((m) => m === input.mediaType) ?? 'image/jpeg';
+  const city = clean(input.city || 'the city', 60);
+  const candidates = (Array.isArray(input.candidates) ? input.candidates : [])
+    .slice(0, 10)
+    .filter((c) => c && typeof c.id === 'string' && isNum(c.distanceM) && isNum(c.bearingDeg))
+    .map((c) => ({ ...c, id: clean(c.id, 80), name: clean(c.name), wiki: (c.wiki ?? []).slice(0, 6).map((w) => clean(w)) }));
 
   // Short facts for the closest candidates, fetched in parallel.
   const facts = await Promise.all(
@@ -222,7 +240,7 @@ async function identify(env: Env, input: IdentifyIn): Promise<IdentifyOut> {
     max_tokens: 4000,
     output_config: { effort: 'low', format: { type: 'json_schema', schema: IDENTIFY_SCHEMA } },
     system: [
-      `You identify buildings, statues and monuments in photos taken by a tourist in Basel. Answer in ${LANG_NAME[lang]}.`,
+      `You identify buildings, statues and monuments in photos taken by a tourist in ${city}. Answer in ${LANG_NAME[lang]}.`,
       'You get the photo, the phone position, compass heading (may be unknown or off by 30°), and nearby places with their distance and direction.',
       'Say "identified" only when the photo clearly matches one candidate AND its position is consistent with where the phone is pointing. Otherwise say "uncertain" and give the two most likely candidates in alternatives. Say "not_found" if no candidate fits.',
       "The short text is two or three sentences to be read aloud. Use only facts from that candidate's text; you may describe what is visible in the photo. When uncertain, say you're not sure and name the two options. Plain text, no markdown.",
@@ -231,7 +249,7 @@ async function identify(env: Env, input: IdentifyIn): Promise<IdentifyOut> {
       {
         role: 'user',
         content: [
-          { type: 'image', source: { type: 'base64', media_type: (input.mediaType as 'image/jpeg') || 'image/jpeg', data: input.image } },
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: input.image } },
           {
             type: 'text',
             text: `Phone position: ${input.lat.toFixed(5)}, ${input.lng.toFixed(5)} (±${Math.round(input.accuracy ?? 30)} m). Facing: ${heading}.\n\nNearby places:\n${list || '(none)'}\n\nWhat is in the photo?`,
@@ -256,7 +274,7 @@ async function identify(env: Env, input: IdentifyIn): Promise<IdentifyOut> {
 
 // ---------- /context ----------
 
-interface ContextIn { date: string; lang?: string; city?: string; stops?: { id: string; name: string }[] }
+interface ContextIn { date: string; lang?: string; city?: string; country?: string; stops?: { id: string; name: string }[] }
 export interface ContextNote {
   type: 'strike' | 'demonstration' | 'closure' | 'transport' | 'event' | 'market' | 'other';
   effect: 'blocks' | 'enriches' | 'info';
@@ -303,21 +321,26 @@ const REPORT_TOOL: Anthropic.Beta.BetaTool = {
 
 async function cityContext(env: Env, input: ContextIn): Promise<{ date: string; notes: ContextNote[] }> {
   const lang = asLang(input.lang);
-  const city = input.city || 'Basel';
+  const city = clean(input.city || 'Basel', 60);
+  const country = clean(input.country || '', 60);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date ?? '')) throw new HttpError(400, 'date must be YYYY-MM-DD');
-  const stops = (input.stops ?? []).slice(0, 80);
+  const stops = (Array.isArray(input.stops) ? input.stops : []).slice(0, 80).map((s) => ({ id: clean(s.id, 80), name: clean(s.name) }));
   const stopList = stops.map((s) => `${s.id}: ${s.name}`).join('\n');
 
   const messages: Anthropic.Beta.BetaMessageParam[] = [
     {
       role: 'user',
       content:
-        `Today is ${input.date}. Search the web for anything happening in ${city}, Switzerland today that affects or enriches a walking tour of the city centre: strikes, demonstrations, street or bridge closures, public transport disruptions, markets, festivals (such as Fasnacht or the Herbstmesse), big sports events.\n\n` +
+        `Today is ${input.date}. Search the web for anything happening in ${city}${country ? `, ${country}` : ''} today that affects or enriches a walking tour of the city centre: strikes, demonstrations, street or bridge closures, public transport disruptions, flooding or other weather warnings, markets, festivals, big sports events.\n\n` +
         `Tour stops (id: name):\n${stopList}\n\n` +
         `Only include items that a search result you actually found states, dated for today. Use that result's URL as sourceUrl. If nothing relevant is found, report an empty list. Write title and summary in ${LANG_NAME[lang]}. Then call report_context once.`,
     },
   ];
-  const tools: Anthropic.Beta.BetaToolUnion[] = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6 }, REPORT_TOOL];
+  // Haiku uses the basic web search tool; larger models get the newer one that filters results itself.
+  const search: Anthropic.Beta.BetaToolUnion = isHaiku(modelOf(env))
+    ? { type: 'web_search_20250305', name: 'web_search', max_uses: 6 }
+    : { type: 'web_search_20260209', name: 'web_search', max_uses: 6 };
+  const tools: Anthropic.Beta.BetaToolUnion[] = [search, REPORT_TOOL];
 
   const seenUrls = new Set<string>();
   let nudged = false;
@@ -353,22 +376,25 @@ export default {
 
     try {
       if (req.method === 'GET' && (path === '' || path === '/health')) {
-        return json({ ok: true, model: env.MODEL || DEFAULT_MODEL, accessCode: !!env.ACCESS_CODE }, 200, cors);
+        return json({ ok: true, model: modelOf(env), accessCode: !!env.ACCESS_CODE }, 200, cors);
       }
       if (req.method !== 'POST') throw new HttpError(404, 'Not found');
       if (!env.ANTHROPIC_API_KEY) throw new HttpError(500, 'ANTHROPIC_API_KEY is not set on the worker.');
+      // Locked by default: without an access code anyone who finds the URL could spend the owner's credits.
+      if (!env.ACCESS_CODE && env.OPEN_ACCESS !== 'true') throw new HttpError(503, 'Server is locked: set the ACCESS_CODE secret (or OPEN_ACCESS="true").');
       if (env.ACCESS_CODE && req.headers.get('X-Access-Code') !== env.ACCESS_CODE) throw new HttpError(401, 'Wrong access code.');
+      if (Number(req.headers.get('Content-Length') ?? 0) > 4_000_000) throw new HttpError(413, 'Request too large.');
 
       const raw = await req.text();
       const body = JSON.parse(raw || '{}');
       switch (path) {
         case '/narrate':
-          return json(await cached('narrate-v1', raw, 30 * 86400, () => narrate(env, body)), 200, cors);
+          return json(await cached('narrate-v2', modelOf(env) + raw, 30 * 86400, () => narrate(env, body)), 200, cors);
         case '/identify':
           return json(await identify(env, body), 200, cors);
         case '/context':
           return json(
-            await cached('context-v1', JSON.stringify([body.date, body.lang, body.city, (body.stops ?? []).length]), 3 * 3600, () => cityContext(env, body)),
+            await cached('context-v2', JSON.stringify([modelOf(env), body.date, body.lang, body.city, body.country, (body.stops ?? []).length]), 3 * 3600, () => cityContext(env, body)),
             200,
             cors,
           );

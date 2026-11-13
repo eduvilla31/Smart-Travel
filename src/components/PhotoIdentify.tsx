@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { loc, useI18n } from '../i18n';
+import { useCity } from '../city';
 import type { Lang, LatLng, Poi } from '../types';
 import { apiPost, hasApi } from '../lib/api';
 import { angleDiff, bearingDeg, haversineM } from '../lib/geo';
@@ -89,6 +90,7 @@ export function guessFromPosition(cands: Candidate[], heading: number | null): P
 
 export default function PhotoIdentify({ pois, position, onClose }: Props) {
   const { t, lang } = useI18n();
+  const city = useCity();
   const compass = useCompass();
   const fileRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<'idle' | 'working' | 'result' | 'error'>('idle');
@@ -144,6 +146,7 @@ export default function PhotoIdentify({ pois, position, onClose }: Props) {
               accuracy: pos.accuracy,
               heading,
               lang,
+              city: city.city.name.en,
               candidates: cands.map((c) => ({
                 id: c.poi.id,
                 name: c.poi.name.en,

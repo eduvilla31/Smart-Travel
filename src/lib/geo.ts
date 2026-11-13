@@ -1,6 +1,10 @@
 import type { LatLng } from '../types';
 
-export const DETOUR_FACTOR = 1.3; // streets are not straight lines
+// Streets are not straight lines. Set per city before planning (Venice needs more than Basel).
+let detourFactor = 1.3;
+export function setDetourFactor(f: number) {
+  detourFactor = f;
+}
 
 export function haversineM(a: LatLng, b: LatLng): number {
   const R = 6371000;
@@ -12,7 +16,7 @@ export function haversineM(a: LatLng, b: LatLng): number {
 }
 
 /** Estimated walking distance in km (straight line x detour factor). */
-export const walkKm = (a: LatLng, b: LatLng) => (haversineM(a, b) * DETOUR_FACTOR) / 1000;
+export const walkKm = (a: LatLng, b: LatLng) => (haversineM(a, b) * detourFactor) / 1000;
 
 export function pathLengthM(path: LatLng[]): number {
   let m = 0;

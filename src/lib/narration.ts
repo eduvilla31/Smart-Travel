@@ -109,15 +109,15 @@ export function bodyParagraphs(extract: string): string[] {
   return paras;
 }
 
-export function buildFromExtract(extract: string, name: string, lang: Lang) {
+export function buildFromExtract(extract: string, name: string, lang: Lang, title = name) {
   const all = sentences(cleanForSpeech(bodyParagraphs(extract).join(' ')));
   const s = takeWords(all, 0, SHORT_WORDS, 2);
   // The long version picks up where the short one stopped.
   const l = takeWords(all, s.next, LONG_WORDS, 2);
-  const lead = lang === 'es' ? `Esto es ${name}.` : `This is ${name}.`;
+  const lead = lang === 'es' ? `Parada: ${name}.` : `Next stop: ${name}.`;
   // Skip the lead-in when the first sentence already names the place.
-  const core = name.toLowerCase().split(' (')[0];
-  const namesIt = (all[0] ?? '').toLowerCase().includes(core);
+  const first = (all[0] ?? '').toLowerCase();
+  const namesIt = [name, title].some((n) => first.includes(n.toLowerCase().split(/ \(|,/)[0]));
   return {
     short: namesIt ? s.text : `${lead} ${s.text}`,
     long: l.text || undefined,
@@ -137,7 +137,7 @@ function seedNarration(poi: Poi, lang: Lang, label: string): Narration | null {
  * then the hand-written seed notes, then a minimal line from the name.
  */
 export async function getNarration(poi: Poi, lang: Lang, seedLabel: string): Promise<Narration> {
-  const key = `narr:v2:${lang}:${poi.id}`;
+  const key = `narr:v3:${lang}:${poi.id}`;
   const name = poi.name[lang] ?? poi.name.en;
   let result: Narration | null = loadCached<Narration>(key, WEEK);
 
@@ -168,7 +168,7 @@ export async function getNarration(poi: Poi, lang: Lang, seedLabel: string): Pro
       );
       const page = firstPage(res);
       if (page?.extract && page.extract.length > 200) {
-        const built = buildFromExtract(page.extract, poi.name[target.lang] ?? poi.name.en, target.lang);
+        const built = buildFromExtract(page.extract, poi.name[target.lang] ?? poi.name.en, target.lang, page.title);
         result = {
           ...built,
           lang: target.lang,

@@ -32,6 +32,8 @@ export interface Poi extends LatLng {
   /** Wikidata sitelink count: a proxy for how notable a place is. */
   sitelinks?: number;
   stairs?: boolean;
+  /** Coordinates not checked against Wikidata. */
+  approx?: boolean;
   /** Hand-written fallback narration (used when Wikipedia is unreachable). */
   text?: Partial<Record<Lang, StopText>>;
   source: 'seed' | 'osm';
@@ -42,7 +44,20 @@ export interface Poi extends LatLng {
 export interface StartPoint extends LatLng { id: string; name: Localized }
 
 export interface CityData {
-  city: { id: string; name: string; center: [number, number]; radiusKm: number; timezone: string };
+  city: {
+    id: string;
+    name: Localized;
+    country: string;
+    center: [number, number];
+    radiusKm: number;
+    timezone: string;
+    /** Walking distance / straight-line distance (canals and rivers force detours). */
+    detourFactor: number;
+    /** How close you must be for a stop's narration to start. */
+    triggerRadiusM: number;
+    /** Start point used for "end at the station". */
+    stationId: string;
+  };
   startPoints: StartPoint[];
   pois: Poi[];
 }
@@ -53,6 +68,7 @@ export const PACE_KMH: Record<Pace, number> = { slow: 3.5, normal: 4.5, fast: 5.
 
 export interface Preferences {
   lang: Lang;
+  cityId: string;
   limitBy: 'duration' | 'distance';
   durationMin: number;
   distanceKm: number;
@@ -61,7 +77,6 @@ export interface Preferences {
   end: EndMode;
   pace: Pace;
   avoidStairs: boolean;
-  triggerRadiusM: number;
 }
 
 export interface RouteStep {
@@ -92,6 +107,7 @@ export interface PlannedRoute {
 
 export interface SavedTour {
   id: string;
+  cityId?: string;
   date: string;
   title: string;
   stops: string[];
@@ -103,6 +119,7 @@ export interface SavedTour {
 
 /** A tour in progress, saved so a reload or signal loss doesn't lose it. */
 export interface ActiveTour {
+  cityId: string;
   route: PlannedRoute;
   status: Record<string, 'visited' | 'skipped'>;
   startedAt: number;

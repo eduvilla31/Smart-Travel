@@ -1,13 +1,20 @@
 {
  "city": {
   "id": "basel",
-  "name": "Basel",
+  "name": {
+   "en": "Basel",
+   "es": "Basilea"
+  },
+  "country": "Switzerland",
   "center": [
    47.5596,
    7.5886
   ],
   "radiusKm": 15,
-  "timezone": "Europe/Zurich"
+  "timezone": "Europe/Zurich",
+  "detourFactor": 1.3,
+  "triggerRadiusM": 25,
+  "stationId": "sbb"
  },
  "startPoints": [
   {
@@ -50,8 +57,8 @@
  "pois": [
   {
    "id": "rathaus",
-   "lat": 47.558,
-   "lng": 7.588,
+   "lat": 47.5583,
+   "lng": 7.5883,
    "name": {
     "en": "Town Hall (Rathaus)",
     "es": "Ayuntamiento (Rathaus)"
@@ -66,7 +73,7 @@
    "priority": 3,
    "wiki": [
     "en:Basel Town Hall",
-    "de:Rathaus Basel"
+    "es:Ayuntamiento de Basilea"
    ],
    "text": {
     "en": {
@@ -76,12 +83,13 @@
     "es": {
      "short": "Estás frente al Ayuntamiento de Basilea, el edificio rojo de la Marktplatz. Se construyó a principios del siglo XVI, poco después de que Basilea se uniera a la Confederación Suiza en 1501, y todavía acoge el gobierno y el parlamento del cantón."
     }
-   }
+   },
+   "wikidata": "Q688984"
   },
   {
    "id": "fischmarkt",
-   "lat": 47.5596,
-   "lng": 7.5866,
+   "lat": 47.55923,
+   "lng": 7.58697,
    "name": {
     "en": "Fischmarkt Fountain",
     "es": "Fuente del Fischmarkt"
@@ -91,9 +99,7 @@
    ],
    "indoor": false,
    "priority": 2,
-   "wiki": [
-    "de:Fischmarktbrunnen (Basel)"
-   ],
+   "wiki": [],
    "text": {
     "en": {
      "short": "This slender Gothic fountain on Fischmarkt dates back to around 1390, making it one of the most important late-medieval fountains in Switzerland. As the name suggests, fish was once sold on this square.",
@@ -102,7 +108,8 @@
     "es": {
      "short": "Esta esbelta fuente gótica de la plaza Fischmarkt data de alrededor de 1390 y es una de las fuentes medievales más importantes de Suiza. Como indica su nombre, aquí se vendía pescado."
     }
-   }
+   },
+   "wikidata": "Q19362806"
   },
   {
    "id": "mittlere-bruecke",
@@ -119,10 +126,7 @@
    ],
    "indoor": false,
    "priority": 3,
-   "wiki": [
-    "en:Mittlere Brücke",
-    "de:Mittlere Brücke (Basel)"
-   ],
+   "wiki": [],
    "text": {
     "en": {
      "short": "This is the Middle Bridge, on the site of one of the oldest crossings of the Rhine, first built in the 1220s. It connects Grossbasel, the old town on the hill, with Kleinbasel on the other bank.",
@@ -131,12 +135,13 @@
     "es": {
      "short": "Este es el Puente Medio, en el lugar de uno de los cruces más antiguos del Rin, construido por primera vez hacia 1225. Une la Grossbasel, el casco antiguo sobre la colina, con la Kleinbasel, en la otra orilla."
     }
-   }
+   },
+   "approx": true
   },
   {
    "id": "muenster",
-   "lat": 47.5564,
-   "lng": 7.5926,
+   "lat": 47.55639,
+   "lng": 7.5925,
    "name": {
     "en": "Basel Minster (Münster)",
     "es": "Catedral de Basilea (Münster)"
@@ -149,6 +154,7 @@
    "priority": 3,
    "wiki": [
     "en:Basel Minster",
+    "es:Catedral de Basilea",
     "de:Basler Münster"
    ],
    "text": {
@@ -159,7 +165,8 @@
     "es": {
      "short": "Bienvenido a la catedral de Basilea, el templo de arenisca roja con dos torres esbeltas que define la silueta de la ciudad. Gran parte de lo que ves se reconstruyó tras el gran terremoto de 1356, y aquí está enterrado Erasmo de Róterdam."
     }
-   }
+   },
+   "wikidata": "Q666479"
   },
   {
    "id": "pfalz",
@@ -175,9 +182,7 @@
    ],
    "indoor": false,
    "priority": 2,
-   "wiki": [
-    "de:Pfalz (Basel)"
-   ],
+   "wiki": [],
    "text": {
     "en": {
      "short": "This is the Pfalz, the terrace behind the Minster, high above the Rhine. It is one of the best viewpoints in the city.",
@@ -186,7 +191,8 @@
     "es": {
      "short": "Esta es la Pfalz, la terraza detrás de la catedral, muy por encima del Rin. Es uno de los mejores miradores de la ciudad, con vistas hacia la Kleinbasel y, en días claros, la Selva Negra."
     }
-   }
+   },
+   "approx": true
   },
   {
    "id": "muensterfaehre",
@@ -201,9 +207,7 @@
    ],
    "indoor": false,
    "priority": 2,
-   "wiki": [
-    "de:Münsterfähre"
-   ],
+   "wiki": [],
    "stairs": true,
    "text": {
     "en": {
@@ -213,12 +217,13 @@
     "es": {
      "short": "Bajando estas escaleras está el transbordador de la catedral, llamado Leu, el león. Los cuatro transbordadores del Rin en Basilea no tienen motor: la propia corriente del río los empuja de una orilla a otra."
     }
-   }
+   },
+   "approx": true
   },
   {
    "id": "spalentor",
-   "lat": 47.5585,
-   "lng": 7.5807,
+   "lat": 47.5581,
+   "lng": 7.58139,
    "name": {
     "en": "Spalen Gate (Spalentor)",
     "es": "Puerta de Spalen (Spalentor)"
@@ -230,7 +235,6 @@
    "indoor": false,
    "priority": 3,
    "wiki": [
-    "en:Spalentor",
     "de:Spalentor"
    ],
    "text": {
@@ -241,12 +245,13 @@
     "es": {
      "short": "Esta es la Spalentor, la más impresionante de las tres puertas medievales que se conservan en Basilea. Se construyó hacia 1400 como parte de la muralla exterior, levantada tras el terremoto de 1356."
     }
-   }
+   },
+   "wikidata": "Q667144"
   },
   {
    "id": "holbeinbrunnen",
-   "lat": 47.5584,
-   "lng": 7.5826,
+   "lat": 47.55725,
+   "lng": 7.58283,
    "name": {
     "en": "Holbein Fountain",
     "es": "Fuente de Holbein"
@@ -257,9 +262,7 @@
    ],
    "indoor": false,
    "priority": 1,
-   "wiki": [
-    "de:Holbeinbrunnen"
-   ],
+   "wiki": [],
    "text": {
     "en": {
      "short": "This Renaissance fountain on Spalenvorstadt is known as the Holbein Fountain. Its bagpiper figure and dancing peasants recall designs by the great artists of the time, including Hans Holbein the Younger, who worked in Basel.",
@@ -268,12 +271,13 @@
     "es": {
      "short": "Esta fuente renacentista de la Spalenvorstadt se conoce como Fuente de Holbein. Su gaitero y sus campesinos bailando recuerdan diseños de los grandes artistas de la época, como Hans Holbein el Joven, que trabajó en Basilea."
     }
-   }
+   },
+   "wikidata": "Q29684291"
   },
   {
    "id": "petersplatz",
-   "lat": 47.5598,
-   "lng": 7.5838,
+   "lat": 47.5594,
+   "lng": 7.58306,
    "name": {
     "en": "Petersplatz & University",
     "es": "Petersplatz y la Universidad"
@@ -287,6 +291,7 @@
    "priority": 2,
    "wiki": [
     "en:University of Basel",
+    "es:Universidad de Basilea",
     "de:Petersplatz (Basel)"
    ],
    "text": {
@@ -297,12 +302,13 @@
     "es": {
      "short": "Esta plaza arbolada es la Petersplatz, junto a los antiguos edificios de la universidad. La Universidad de Basilea, fundada en 1460, es la más antigua de Suiza."
     }
-   }
+   },
+   "wikidata": "Q2079730"
   },
   {
    "id": "tinguely-brunnen",
-   "lat": 47.5539,
-   "lng": 7.5884,
+   "lat": 47.5537,
+   "lng": 7.5906,
    "name": {
     "en": "Tinguely Fountain",
     "es": "Fuente de Tinguely"
@@ -314,8 +320,7 @@
    "indoor": false,
    "priority": 3,
    "wiki": [
-    "en:Tinguely Fountain",
-    "de:Fasnachtsbrunnen"
+    "de:Fasnachts-Brunnen"
    ],
    "text": {
     "en": {
@@ -325,12 +330,13 @@
     "es": {
      "short": "Frente al teatro está la Fuente de Tinguely, también llamada Fuente del Carnaval. La creó en 1977 el artista suizo Jean Tinguely, y sus diez máquinas negras salpican, giran y lanzan agua todo el día."
     }
-   }
+   },
+   "wikidata": "Q683514"
   },
   {
    "id": "kunsthalle",
-   "lat": 47.5541,
-   "lng": 7.5899,
+   "lat": 47.55389,
+   "lng": 7.59083,
    "name": {
     "en": "Kunsthalle Basel",
     "es": "Kunsthalle Basel"
@@ -341,7 +347,8 @@
    "indoor": true,
    "priority": 2,
    "wiki": [
-    "en:Kunsthalle Basel"
+    "en:Kunsthalle Basel",
+    "es:Kunsthalle (Basilea)"
    ],
    "text": {
     "en": {
@@ -351,12 +358,13 @@
     "es": {
      "short": "Este edificio es la Kunsthalle de Basilea, que muestra arte contemporáneo desde 1872. No tiene colección permanente: presenta exposiciones temporales, a menudo de artistas al inicio de su carrera internacional."
     }
-   }
+   },
+   "wikidata": "Q614652"
   },
   {
    "id": "historisches-museum",
-   "lat": 47.555,
-   "lng": 7.5899,
+   "lat": 47.55444,
+   "lng": 7.59056,
    "name": {
     "en": "Historical Museum (Barfüsserkirche)",
     "es": "Museo Histórico (Barfüsserkirche)"
@@ -367,8 +375,8 @@
    "indoor": true,
    "priority": 2,
    "wiki": [
-    "en:Historical Museum Basel",
-    "de:Historisches Museum Basel"
+    "de:Historisches Museum Basel",
+    "es:Museo de Historia de Basilea"
    ],
    "text": {
     "en": {
@@ -378,12 +386,13 @@
     "es": {
      "short": "La alta iglesia gótica de la Barfüsserplatz es la antigua iglesia franciscana, hoy sede del Museo Histórico de Basilea. A los franciscanos los llamaban los frailes descalzos, y de ahí viene el nombre de la plaza."
     }
-   }
+   },
+   "wikidata": "Q386286"
   },
   {
    "id": "elisabethenkirche",
-   "lat": 47.5516,
-   "lng": 7.5904,
+   "lat": 47.5528,
+   "lng": 7.59111,
    "name": {
     "en": "St. Elisabeth's Church",
     "es": "Iglesia de Santa Isabel"
@@ -405,12 +414,13 @@
     "es": {
      "short": "Esta iglesia neogótica, terminada en 1864, la pagaron el filántropo Christoph Merian y su esposa Margaretha. Fue una de las primeras grandes iglesias protestantes construidas en Suiza después de la Reforma."
     }
-   }
+   },
+   "wikidata": "Q687022"
   },
   {
    "id": "kunstmuseum",
-   "lat": 47.554,
-   "lng": 7.5941,
+   "lat": 47.55417,
+   "lng": 7.59417,
    "name": {
     "en": "Kunstmuseum Basel",
     "es": "Kunstmuseum Basel"
@@ -422,7 +432,8 @@
    "indoor": true,
    "priority": 3,
    "wiki": [
-    "en:Kunstmuseum Basel"
+    "en:Kunstmuseum Basel",
+    "es:Museo de Arte de Basilea"
    ],
    "text": {
     "en": {
@@ -432,7 +443,8 @@
     "es": {
      "short": "Este es el Kunstmuseum de Basilea. Su colección comenzó en 1661, cuando la ciudad compró el Gabinete Amerbach, lo que lo convierte en una de las colecciones públicas de arte más antiguas del mundo."
     }
-   }
+   },
+   "wikidata": "Q194626"
   },
   {
    "id": "picassoplatz",
@@ -458,12 +470,14 @@
     "es": {
      "short": "Esta pequeña plaza lleva el nombre de Pablo Picasso gracias a una historia extraordinaria: en 1967, los habitantes de Basilea votaron en referéndum gastar dinero público en dos cuadros de Picasso para su museo, y el pintor, emocionado, regaló varias obras más a la ciudad."
     }
-   }
+   },
+   "wikidata": "Q1647965",
+   "approx": true
   },
   {
    "id": "cartoonmuseum",
-   "lat": 47.5546,
-   "lng": 7.5965,
+   "lat": 47.55447,
+   "lng": 7.59635,
    "name": {
     "en": "Cartoonmuseum Basel",
     "es": "Cartoonmuseum Basel"
@@ -474,7 +488,8 @@
    "indoor": true,
    "priority": 1,
    "wiki": [
-    "en:Cartoonmuseum Basel"
+    "en:Cartoonmuseum Basel – Centre for Narrative Art",
+    "es:Museo de la caricatura y el dibujo animado de Basilea"
    ],
    "text": {
     "en": {
@@ -484,7 +499,8 @@
     "es": {
      "short": "En la elegante calle St. Alban-Vorstadt está el Cartoonmuseum, el único museo de Suiza dedicado por completo al dibujo narrativo: cómics, caricaturas y novelas gráficas."
     }
-   }
+   },
+   "wikidata": "Q676514"
   },
   {
    "id": "hammering-man",
@@ -511,7 +527,8 @@
     "es": {
      "short": "Sobre la Aeschenplatz se alza el Hammering Man, una gigantesca silueta de acero del artista estadounidense Jonathan Borofsky. Su brazo motorizado balancea lentamente un martillo, día tras día."
     }
-   }
+   },
+   "approx": true
   },
   {
    "id": "oberer-rheinweg",
@@ -537,7 +554,8 @@
     "es": {
      "short": "Este soleado paseo en la orilla de la Kleinbasel es el Oberer Rheinweg. En verano es el salón de la ciudad: gente sentada en los escalones, helados y baños en el Rin."
     }
-   }
+   },
+   "approx": true
   },
   {
    "id": "rheingasse",
@@ -562,12 +580,13 @@
     "es": {
      "short": "Estás en la Rheingasse, una de las viejas callejuelas de la Kleinbasel. Este lado del río fue una ciudad aparte y conserva un ambiente más relajado y alternativo, con bares, tiendas pequeñas y muchas paredes pintadas."
     }
-   }
+   },
+   "approx": true
   },
   {
    "id": "kaserne",
-   "lat": 47.5631,
-   "lng": 7.5918,
+   "lat": 47.5629,
+   "lng": 7.5898,
    "name": {
     "en": "Kaserne Basel",
     "es": "Kaserne Basel"
@@ -590,7 +609,8 @@
     "es": {
      "short": "Este gran edificio junto al río es la Kaserne, un antiguo cuartel militar de la década de 1860. Hoy es uno de los principales centros culturales de Basilea, con conciertos, teatro y un patio lleno de vida."
     }
-   }
+   },
+   "wikidata": "Q1726074"
   },
   {
    "id": "matthaeus",
@@ -615,12 +635,13 @@
     "es": {
      "short": "Ahora estás en el barrio de Matthäus, uno de los más diversos de Basilea. Fíjate en los grandes murales de las fachadas y en las piezas de colores de las calles laterales."
     }
-   }
+   },
+   "approx": true
   },
   {
    "id": "dreirosen",
-   "lat": 47.568,
-   "lng": 7.5888,
+   "lat": 47.5709,
+   "lng": 7.5867,
    "name": {
     "en": "Dreirosen Bridge Underpass",
     "es": "Bajo el puente Dreirosen"
@@ -641,7 +662,8 @@
     "es": {
      "short": "Bajo el puente Dreirosen, los muros de hormigón junto al río se han convertido en uno de los lugares de grafiti y arte urbano más conocidos de Basilea."
     }
-   }
+   },
+   "wikidata": "Q687157"
   },
   {
    "id": "holzpark",
@@ -666,12 +688,13 @@
     "es": {
      "short": "Bienvenido a la zona portuaria de Klybeck. Antiguos terrenos industriales junto al Rin se han llenado de bares temporales, huertos y artistas, y los muros, contenedores y silos están cubiertos de arte a gran escala."
     }
-   }
+   },
+   "approx": true
   },
   {
    "id": "museum-tinguely",
-   "lat": 47.559,
-   "lng": 7.6119,
+   "lat": 47.55917,
+   "lng": 7.61222,
    "name": {
     "en": "Museum Tinguely",
     "es": "Museo Tinguely"
@@ -683,7 +706,8 @@
    "indoor": true,
    "priority": 2,
    "wiki": [
-    "en:Museum Tinguely"
+    "en:Museum Tinguely",
+    "es:Museo Tinguely"
    ],
    "text": {
     "en": {
@@ -693,12 +717,13 @@
     "es": {
      "short": "Este edificio de arenisca rosada junto al Rin es el Museo Tinguely, diseñado por el arquitecto Mario Botta e inaugurado en 1996. Está dedicado a Jean Tinguely, el autor de la fuente junto al teatro."
     }
-   }
+   },
+   "wikidata": "Q180904"
   },
   {
    "id": "markthalle",
-   "lat": 47.5502,
-   "lng": 7.5866,
+   "lat": 47.54944,
+   "lng": 7.58722,
    "name": {
     "en": "Markthalle Basel",
     "es": "Markthalle Basel"
@@ -711,7 +736,8 @@
    "indoor": true,
    "priority": 2,
    "wiki": [
-    "de:Markthalle Basel"
+    "de:Markthalle Basel",
+    "es:Markthalle Basel"
    ],
    "text": {
     "en": {
@@ -720,12 +746,13 @@
     "es": {
      "short": "Bajo esta gran cúpula cerca de la estación está la Markthalle. Se construyó hacia 1929 como mercado mayorista de la ciudad y hoy está llena de puestos de comida de todo el mundo: buena parada para comer o refugiarse de la lluvia."
     }
-   }
+   },
+   "wikidata": "Q1901023"
   },
   {
    "id": "botanischer-garten",
-   "lat": 47.5591,
-   "lng": 7.5819,
+   "lat": 47.55861,
+   "lng": 7.58167,
    "name": {
     "en": "University Botanical Garden",
     "es": "Jardín Botánico de la Universidad"
@@ -736,7 +763,8 @@
    "indoor": true,
    "priority": 1,
    "wiki": [
-    "de:Botanischer Garten der Universität Basel"
+    "de:Botanischer Garten der Universität Basel",
+    "es:Jardín botánico de la universidad de Basilea"
    ],
    "text": {
     "en": {
@@ -745,7 +773,8 @@
     "es": {
      "short": "Detrás de los antiguos edificios universitarios está el Jardín Botánico de la Universidad de Basilea, uno de los más antiguos de Suiza. Sus invernaderos son un refugio cálido y verde en un día gris."
     }
-   }
+   },
+   "wikidata": "Q600792"
   },
   {
    "id": "solitude",
@@ -769,12 +798,13 @@
     "es": {
      "short": "Este parque verde junto al río, la Solitude, rodea el Museo Tinguely. Con sus árboles centenarios y bancos frente al Rin, es un lugar tranquilo para descansar los pies."
     }
-   }
+   },
+   "approx": true
   },
   {
    "id": "elisabethenanlage",
-   "lat": 47.5501,
-   "lng": 7.5898,
+   "lat": 47.54958,
+   "lng": 7.59063,
    "name": {
     "en": "Elisabethen Park",
     "es": "Parque Elisabethen"
@@ -795,12 +825,13 @@
     "es": {
      "short": "Entre la estación y el casco antiguo está el parque Elisabethen. Busca el Monumento de Estrasburgo, un regalo de esa ciudad para agradecer a Basilea la ayuda a sus habitantes durante la guerra de 1870 a 1871."
     }
-   }
+   },
+   "wikidata": "Q112957152"
   },
   {
    "id": "st-alban-tor",
-   "lat": 47.5528,
-   "lng": 7.6044,
+   "lat": 47.5534,
+   "lng": 7.60325,
    "name": {
     "en": "St. Alban Gate",
     "es": "Puerta de San Alban"
@@ -812,7 +843,6 @@
    "indoor": false,
    "priority": 2,
    "wiki": [
-    "en:St. Alban Gate",
     "de:St. Alban-Tor"
    ],
    "text": {
@@ -822,12 +852,13 @@
     "es": {
      "short": "Esta es la puerta de San Alban, otra de las tres puertas medievales que se conservan en Basilea. Rodeada de jardines y restos de la antigua muralla, protegía el camino hacia el este a lo largo del Rin."
     }
-   }
+   },
+   "wikidata": "Q392077"
   },
   {
    "id": "papiermuehle",
-   "lat": 47.5547,
-   "lng": 7.6018,
+   "lat": 47.555,
+   "lng": 7.604,
    "name": {
     "en": "Basel Paper Mill",
     "es": "Molino de Papel de Basilea"
@@ -840,7 +871,7 @@
    "priority": 2,
    "wiki": [
     "en:Basel Paper Mill",
-    "de:Basler Papiermühle"
+    "es:Molino de Papel de Basilea"
    ],
    "text": {
     "en": {
@@ -849,12 +880,13 @@
     "es": {
      "short": "En este molino medieval junto al canal de San Alban, el museo del Molino de Papel muestra cómo se hacía el papel y se imprimían libros a mano. En la época de Erasmo, Basilea fue un gran centro de imprenta."
     }
-   }
+   },
+   "wikidata": "Q594378"
   },
   {
    "id": "roche-tower",
-   "lat": 47.5596,
-   "lng": 7.6068,
+   "lat": 47.55831,
+   "lng": 7.60764,
    "name": {
     "en": "Roche Towers",
     "es": "Torres Roche"
@@ -865,7 +897,8 @@
    "indoor": false,
    "priority": 1,
    "wiki": [
-    "en:Roche Tower"
+    "en:Roche Tower",
+    "es:Torre Roche 1"
    ],
    "text": {
     "en": {
@@ -874,12 +907,13 @@
     "es": {
      "short": "Sobre la Kleinbasel se alzan las torres Roche, diseñadas por los arquitectos basilienses Herzog y de Meuron para la farmacéutica Roche. Al terminarse, cada una fue a su vez el edificio más alto de Suiza."
     }
-   }
+   },
+   "wikidata": "Q15712780"
   },
   {
    "id": "wettsteinbruecke",
-   "lat": 47.5574,
-   "lng": 7.5955,
+   "lat": 47.55639,
+   "lng": 7.59611,
    "name": {
     "en": "Wettstein Bridge",
     "es": "Puente Wettstein"
@@ -900,7 +934,8 @@
     "es": {
      "short": "El puente Wettstein une el lado del Kunstmuseum con la Kleinbasel. Lleva el nombre de Johann Rudolf Wettstein, el alcalde de Basilea que en 1648 logró el reconocimiento de la independencia suiza en la Paz de Westfalia."
     }
-   }
+   },
+   "wikidata": "Q1597642"
   },
   {
    "id": "messeplatz",
@@ -926,7 +961,8 @@
     "es": {
      "short": "Esta es la Messeplatz, sede del recinto ferial de Basilea, donde cada junio se celebra Art Basel. Ponte bajo la enorme abertura circular del edificio, la City Lounge, diseñada por Herzog y de Meuron, y mira hacia arriba."
     }
-   }
+   },
+   "approx": true
   }
  ]
 }

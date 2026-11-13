@@ -6,7 +6,7 @@ import type { ActiveTour, LatLng, PlannedRoute, Poi, RouteStep } from '../types'
 import { useGeolocation, useOnline, useWakeLock } from '../hooks';
 import { haversineM, pointAlong } from '../lib/geo';
 import { getNarration, type Narration } from '../lib/narration';
-import { CITY } from '../lib/places';
+import { useCity } from '../city';
 import { fetchForecast, minutesUntilRain } from '../lib/weather';
 import * as speech from '../lib/speech';
 
@@ -45,6 +45,7 @@ function turnKey(s: RouteStep): StringKey | null {
 
 export default function Tour({ route, radiusM, places, resume, onProgress, onExit, onEnd }: Props) {
   const { t, lang } = useI18n();
+  const city = useCity();
   // A resumed tour still waits for a tap: iOS only allows speech after one.
   const [started, setStarted] = useState(false);
   const [status, setStatus] = useState<Record<string, StopState>>(resume?.status ?? {});
@@ -70,6 +71,7 @@ export default function Tour({ route, radiusM, places, resume, onProgress, onExi
   const lastStep = useRef(-1);
   const simDist = useRef(0);
   const nudged = useRef(false);
+  const narrating = useRef(false); // a stop's narration is playing: don't let the next stop cut it off
   const statusRef = useRef(status);
   statusRef.current = status;
   const narrRef = useRef(narr);
@@ -98,7 +100,7 @@ export default function Tour({ route, radiusM, places, resume, onProgress, onExi
 
   // Save progress so a reload or a dropped connection can resume the tour.
   useEffect(() => {
-    if (started) onProgress({ route, status, startedAt: startedAt.current, savedAt: Date.now() });
+    if (started) onProgress({ cityId: city.city.id, route, status, startedAt: startedAt.current, savedAt: Date.now() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started, status, route]);
 
@@ -162,15 +164,20 @@ export default function Tour({ route, radiusM, places, resume, onProgress, onExi
       statusRef.current = { ...statusRef.current, [p.id]: 'visited' };
       setActiveId(p.id);
       navigator.vibrate?.(200);
-      const finished = await playStop(p, 'short');
-      if (finished) await announceNext();
+      narrating.current = true;
+      try {
+        const finished = await playStop(p, 'short');
+        if (finished) await announceNext();
+      } finally {
+        narrating.current = false;
+      }
     },
     [playStop, announceNext],
   );
 
   // Geofence + turn-by-turn on every position update.
   useEffect(() => {
-    if (!started || !me) return;
+    if (!started || !me || narrating.current) return;
     const slack = me.sim ? 0 : Math.min((me.accuracy ?? 0) / 2, 15);
     const hit = route.stops.find((s) => !statusRef.current[s.id] && haversineM(me, s) <= radiusM + slack);
     if (hit) {
@@ -210,8 +217,8 @@ export default function Tour({ route, radiusM, places, resume, onProgress, onExi
       const pos = meRef.current;
       if (nudged.current || !pos) return;
       try {
-        const [lat, lng] = CITY.city.center;
-        const mins = minutesUntilRain(await fetchForecast(lat, lng, CITY.city.timezone), 45);
+        const [lat, lng] = city.city.center;
+        const mins = minutesUntilRain(await fetchForecast(lat, lng, city.city.timezone), 45);
         if (mins == null) return;
         const shelter = route.stops
           .filter((s) => s.indoor && !statusRef.current[s.id])
@@ -233,7 +240,7 @@ export default function Tour({ route, radiusM, places, resume, onProgress, onExi
       window.clearTimeout(first);
       window.clearInterval(id);
     };
-  }, [started, route, t, lang, say, showToast]);
+  }, [started, route, city, t, lang, say, showToast]);
 
   const start = () => {
     speech.unlock();

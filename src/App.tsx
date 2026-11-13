@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CityContext } from './city';
 import { LangContext, translate, loc, type StringKey } from './i18n';
 import type { ActiveTour, LatLng, PlannedRoute, Poi, Preferences, SavedTour } from './types';
 import { load, save } from './lib/storage';
-import { CITY, SEED_POIS, inCity, loadPlaces } from './lib/places';
+import { cityAt, cityById, inCity, loadPlaces } from './lib/places';
+import { setDetourFactor } from './lib/geo';
 import { hasApi } from './lib/api';
 import { fetchCityContext, type ContextNote } from './lib/context';
 import { budgets, planRoutes } from './lib/planner';
@@ -14,6 +16,7 @@ import Summary from './screens/Summary';
 
 const DEFAULT_PREFS: Preferences = {
   lang: navigator.language?.toLowerCase().startsWith('es') ? 'es' : 'en',
+  cityId: 'basel',
   limitBy: 'duration',
   durationMin: 120,
   distanceKm: 5,
@@ -22,7 +25,6 @@ const DEFAULT_PREFS: Preferences = {
   end: 'loop',
   pace: 'normal',
   avoidStairs: false,
-  triggerRadiusM: 25,
 };
 
 type Screen = 'home' | 'routes' | 'tour' | 'summary';
@@ -45,11 +47,14 @@ export default function App() {
   const [ignoreWeather, setIgnoreWeather] = useState(false);
   const [planStatus, setPlanStatus] = useState<PlanStatus>(null);
   const [placesNote, setPlacesNote] = useState<string | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
   const [routes, setRoutes] = useState<PlannedRoute[]>([]);
   const [selected, setSelected] = useState(0);
   const [result, setResult] = useState<TourResult | null>(null);
   const [savedTours, setSavedTours] = useState<SavedTour[]>(() => load('savedTours', []));
-  const [places, setPlaces] = useState<Poi[]>(SEED_POIS);
+  const city = useMemo(() => cityById(prefs.cityId), [prefs.cityId]);
+  const [places, setPlaces] = useState<Poi[]>(city.pois);
+  const pickedCity = useRef(false); // true once the user chose a city by hand
   const [context, setContext] = useState<ContextState>({ status: hasApi() ? 'loading' : 'off' });
   const [contextKey, setContextKey] = useState(0);
   const [activeTour, setActiveTour] = useState<ActiveTour | null>(loadActiveTour);
@@ -84,50 +89,83 @@ export default function App() {
     );
   }, []);
 
-  // Weather for the city, on start.
-  const refreshForecast = useCallback(async () => {
-    try {
-      const [lat, lng] = CITY.city.center;
-      setForecast(await fetchForecast(lat, lng, CITY.city.timezone));
-      setForecastError(false);
-    } catch {
-      setForecastError(true);
-    }
-  }, []);
+  // Standing in a supported city? Switch to it, unless the user picked one by hand.
   useEffect(() => {
-    refreshForecast();
-  }, [refreshForecast]);
+    if (gps.status !== 'ok' || pickedCity.current) return;
+    const here = cityAt(gps.pos);
+    if (here && here.city.id !== prefs.cityId) setPrefs({ cityId: here.city.id, startId: 'gps' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gps]);
+
+  const chooseCity = (id: string) => {
+    pickedCity.current = true;
+    if (id !== prefs.cityId) setPrefs({ cityId: id, startId: 'gps' });
+  };
+
+  useEffect(() => {
+    setPlaces(city.pois);
+    setDetourFactor(city.city.detourFactor);
+  }, [city]);
+
+  // Weather for the city, on start and when the city changes.
+  useEffect(() => {
+    let cancelled = false;
+    setForecast(null);
+    setForecastError(false);
+    const [lat, lng] = city.city.center;
+    fetchForecast(lat, lng, city.city.timezone)
+      .then((f) => !cancelled && setForecast(f))
+      .catch(() => !cancelled && setForecastError(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [city]);
 
   // Today in the city: strikes, closures, events (server-side web search).
   useEffect(() => {
     if (!hasApi()) return setContext({ status: 'off' });
     let cancelled = false;
     setContext({ status: 'loading' });
-    fetchCityContext(CITY.city.name, CITY.city.timezone, lang, SEED_POIS)
+    fetchCityContext(city, lang)
       .then((notes) => !cancelled && setContext({ status: 'ok', notes }))
       .catch(() => !cancelled && setContext({ status: 'error' }));
     return () => {
       cancelled = true;
     };
-  }, [lang, contextKey]);
+  }, [lang, contextKey, city]);
 
   const plannedMinutes = prefs.limitBy === 'duration' ? prefs.durationMin : Math.round((prefs.distanceKm / 4.5) * 60 + 30);
   const weather = useMemo(() => (forecast ? analyseForecast(forecast, plannedMinutes) : null), [forecast, plannedMinutes]);
 
   const startPlace = useMemo(() => {
-    const sp = CITY.startPoints.find((s) => s.id === prefs.startId);
+    const sp = city.startPoints.find((s) => s.id === prefs.startId);
     if (sp) return { lat: sp.lat, lng: sp.lng, name: loc(sp.name, lang) };
-    if (gps.status === 'ok' && inCity(gps.pos)) return { ...gps.pos, name: t('myLocation') };
-    const m = CITY.startPoints[0];
+    if (gps.status === 'ok' && inCity(city, gps.pos)) return { ...gps.pos, name: t('myLocation') };
+    const m = city.startPoints[0];
     return { lat: m.lat, lng: m.lng, name: loc(m.name, lang) };
-  }, [prefs.startId, gps, lang, t]);
+  }, [city, prefs.startId, gps, lang, t]);
 
   const plan = async () => {
     setPlanStatus('places');
     setPlacesNote(null);
+    setPlanError(null);
     try {
+      setDetourFactor(city.city.detourFactor);
+      // The weather didn't load earlier? Try once more, so rain can still shape the routes.
+      let w = weather;
+      if (!forecast) {
+        try {
+          const [lat, lng] = city.city.center;
+          const f = await fetchForecast(lat, lng, city.city.timezone);
+          setForecast(f);
+          setForecastError(false);
+          w = analyseForecast(f, plannedMinutes);
+        } catch {
+          /* plan without weather */
+        }
+      }
       const b = budgets(prefs);
-      const places = await loadPlaces(startPlace, b.radiusKm * 1000 + 300);
+      const places = await loadPlaces(city, startPlace, b.radiusKm * 1000 + 300);
       setPlacesNote(places.live ? t('placesCount', { n: places.pois.length }) : t('placesFallback'));
       setPlaces(places.pois);
       const blocked =
@@ -135,13 +173,13 @@ export default function App() {
           ? context.notes.filter((n) => n.effect === 'blocks').flatMap((n) => n.affectsStopIds.map((id) => ({ id, title: n.title })))
           : [];
       setPlanStatus('routes');
-      const sbb = CITY.startPoints.find((s) => s.id === 'sbb')!;
+      const sbb = city.startPoints.find((s) => s.id === city.city.stationId) ?? city.startPoints[0];
       const rs = await planRoutes({
         pois: places.pois,
         prefs,
         start: startPlace,
         station: { lat: sbb.lat, lng: sbb.lng, name: loc(sbb.name, lang) },
-        weather,
+        weather: w,
         ignoreWeather,
         blocked,
         t,
@@ -150,6 +188,8 @@ export default function App() {
       setRoutes(rs);
       setSelected(0);
       setScreen('routes');
+    } catch {
+      setPlanError(t('planFailed'));
     } finally {
       setPlanStatus(null);
     }
@@ -158,6 +198,7 @@ export default function App() {
   const saveTour = (r: TourResult) => {
     const entry: SavedTour = {
       id: r.route.id,
+      cityId: city.city.id,
       date: new Date(r.startedAt).toISOString(),
       title: r.route.title,
       stops: r.route.stops.filter((s) => r.visited.includes(s.id)).map((s) => loc(s.name, lang)),
@@ -165,12 +206,13 @@ export default function App() {
       minutes: r.minutes,
       route: r.route,
     };
-    const next = [entry, ...savedTours.filter((s) => s.id !== entry.id)].slice(0, 30);
+    const next = [entry, ...savedTours.filter((s) => s.id !== entry.id)].slice(0, 12); // routes include their path, so keep the list short
     setSavedTours(next);
     save('savedTours', next);
   };
 
-  const startTour = (route: PlannedRoute, from: ActiveTour | null) => {
+  const startTour = (route: PlannedRoute, from: ActiveTour | null, cityId?: string) => {
+    if (cityId && cityId !== prefs.cityId) chooseCity(cityId);
     setRoutes([route]);
     setSelected(0);
     setResume(from);
@@ -182,6 +224,7 @@ export default function App() {
   };
 
   return (
+    <CityContext.Provider value={city}>
     <LangContext.Provider value={i18n}>
       {screen === 'home' && (
         <Home
@@ -199,9 +242,11 @@ export default function App() {
           context={context}
           onApiChanged={() => setContextKey((k) => k + 1)}
           activeTour={activeTour}
-          onResume={() => activeTour && startTour(activeTour.route, activeTour)}
+          onResume={() => activeTour && startTour(activeTour.route, activeTour, activeTour.cityId)}
+          onChooseCity={chooseCity}
+          planError={planError}
           onDiscard={clearActive}
-          onWalkAgain={(r) => startTour(r, null)}
+          onWalkAgain={(r, cityId) => startTour(r, null, cityId)}
         />
       )}
       {screen === 'routes' && (
@@ -222,7 +267,7 @@ export default function App() {
       {screen === 'tour' && routes[selected] && (
         <Tour
           route={routes[selected]}
-          radiusM={prefs.triggerRadiusM}
+          radiusM={city.city.triggerRadiusM}
           places={places}
           resume={resume}
           onProgress={(a) => {
@@ -246,5 +291,6 @@ export default function App() {
         />
       )}
     </LangContext.Provider>
+    </CityContext.Provider>
   );
 }

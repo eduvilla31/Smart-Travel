@@ -1,11 +1,16 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { setRouterGapMs } from '../routing';
 import { translate } from '../../i18n';
-import { CITY, SEED_POIS } from '../places';
+import { cityById } from '../places';
+
+const CITY = cityById('basel');
+const SEED_POIS = CITY.pois;
 import { planRoutes } from '../planner';
 import { guessFromPosition, nearestCandidates } from '../../components/PhotoIdentify';
 
 beforeAll(() => {
   vi.stubGlobal('fetch', () => Promise.reject(new Error('offline')));
+  setRouterGapMs(0);
 });
 
 const sp = (id: string) => {
@@ -18,7 +23,7 @@ describe('city context (milestone 7)', () => {
   it('reroutes around a blocked stop and says why', async () => {
     const routes = await planRoutes({
       pois: SEED_POIS,
-      prefs: { lang: 'en', limitBy: 'duration', durationMin: 120, distanceKm: 5, interests: ['historic'], startId: 'marktplatz', end: 'loop', pace: 'normal', avoidStairs: false, triggerRadiusM: 25 },
+      prefs: { lang: 'en', cityId: 'basel', limitBy: 'duration', durationMin: 120, distanceKm: 5, interests: ['historic'], startId: 'marktplatz', end: 'loop', pace: 'normal', avoidStairs: false },
       start: sp('marktplatz'), station: sp('sbb'), weather: null, ignoreWeather: false,
       blocked: [{ id: 'mittlere-bruecke', title: 'Demonstration on the Middle Bridge' }],
       t, lang: 'en',
@@ -31,7 +36,7 @@ describe('city context (milestone 7)', () => {
 describe('photo identify without the server (milestone 6 fallback)', () => {
   it('guesses the places in front of the camera', () => {
     // standing just east of the Spalentor, facing west
-    const pos = { lat: 47.5585, lng: 7.5818 };
+    const pos = { lat: 47.5581, lng: 7.5824 };
     const cands = nearestCandidates(SEED_POIS, pos);
     expect(cands[0].distanceM).toBeLessThan(150);
     const guess = guessFromPosition(cands, 270).map((p) => p.id);

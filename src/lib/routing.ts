@@ -37,15 +37,28 @@ export function straightPath(points: LatLng[]): WalkPath {
   return { path: points, distanceKm: km, steps: [], routed: false };
 }
 
+// The router's fair-use policy is one request per second: space our calls out.
+let minGapMs = 1100;
+let nextSlot = 0;
+/** Tests switch the spacing off. */
+export function setRouterGapMs(ms: number) {
+  minGapMs = ms;
+}
+async function politely<T>(call: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const wait = Math.max(0, nextSlot - now);
+  nextSlot = Math.max(now, nextSlot) + minGapMs;
+  if (wait) await new Promise((r) => setTimeout(r, wait));
+  return call();
+}
+
 export async function walkingPath(points: LatLng[]): Promise<WalkPath> {
   if (points.length < 2) return straightPath(points);
   const coords = points.map((p) => `${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
+  const url = `${FOOT_ROUTER}${coords}?overview=full&geometries=geojson&steps=true`;
   try {
-    const res = await fetchJson<OsrmRes>(
-      `${FOOT_ROUTER}${coords}?overview=full&geometries=geojson&steps=true`,
-      {},
-      12000,
-    );
+    // One more try after a pause: a throttled answer arrives without CORS headers and looks like a network error.
+    const res = await politely(() => fetchJson<OsrmRes>(url, {}, 12000)).catch(() => politely(() => fetchJson<OsrmRes>(url, {}, 12000)));
     const r = res.routes?.[0];
     if (res.code !== 'Ok' || !r) throw new Error('no route');
     const steps: RouteStep[] = [];

@@ -7,6 +7,11 @@ compatibility_flags = ["nodejs_compat"]
 # Who may call the API from a browser. Add your GitHub Pages origin.
 ALLOWED_ORIGINS = "https://eduvilla31.github.io"
 
+# Model: claude-haiku-5-5 (default, cheapest) or claude-opus-5-5 (best quality, about 40x the price).
+# MODEL = "claude-opus-5-5"
+
 # Secrets (set with `npx wrangler secret put NAME`, never committed):
 #   ANTHROPIC_API_KEY  - required
-#   ACCESS_CODE        - recommended: a code friends type into the app
+#   ACCESS_CODE        - required: the code friends type into the app.
+#                        Without it the server refuses every request
+#                        (set OPEN_ACCESS = "true" under [vars] only if you really want it open).
