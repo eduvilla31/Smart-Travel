@@ -1,0 +1,87 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cityContext, identify, narrate } from '../src/index';
+
+const env = { ANTHROPIC_API_KEY: 'test-key' };
+
+/** Route fetch: Claude API gets queued canned messages, Wikipedia gets a fixed article. */
+function stubFetch(claudeReplies: object[], captured: any[] = []) {
+  vi.stubGlobal('fetch', async (url: string | URL | Request, init?: RequestInit) => {
+    const u = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
+    if (u.includes('api.anthropic.com')) {
+      captured.push(JSON.parse(String(init?.body)));
+      const msg = claudeReplies.shift();
+      return new Response(JSON.stringify(msg), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    if (u.includes('wikipedia.org')) {
+      const extract = 'The Spalentor is a city gate in Basel. It was built around 1400 as part of the outer wall.\n== History ==\nIt has a portcullis.\n== References ==\nIgnore.';
+      return Response.json({ query: { pages: { '1': { title: 'Spalentor', extract } } } });
+    }
+    return new Response('not found', { status: 404 });
+  });
+}
+
+const message = (content: object[], stop_reason = 'end_turn') => ({
+  id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-opus-5-5', content, stop_reason,
+  stop_sequence: null, usage: { input_tokens: 10, output_tokens: 10 },
+});
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe('/narrate', () => {
+  it('grounds the prompt in the Wikipedia article and returns short + long', async () => {
+    const sent: any[] = [];
+    stubFetch([message([{ type: 'text', text: JSON.stringify({ short: 'Look up at the gate.', long: 'More.' }) }])], sent);
+    const out = await narrate(env as any, { name: 'Spalentor', wiki: ['en:Spalentor'], lang: 'en' });
+    expect(out.short).toBe('Look up at the gate.');
+    expect(out.sourceUrl).toBe('https://en.wikipedia.org/wiki/Spalentor');
+    const prompt = sent[0].messages[0].content as string;
+    expect(prompt).toContain('built around 1400');
+    expect(prompt).not.toContain('Ignore.');
+    expect(sent[0].model).toBe('claude-opus-5-5');
+    expect(sent[0].fallbacks).toBe('default');
+    expect(sent[0].output_config.format.type).toBe('json_schema');
+  });
+
+  it('refuses without any source text', async () => {
+    stubFetch([]);
+    await expect(narrate(env as any, { name: 'X', lang: 'en' })).rejects.toThrow(/No source/);
+  });
+});
+
+describe('/identify', () => {
+  it('drops candidate ids the client never sent', async () => {
+    const answer = { status: 'uncertain', candidateId: 'made-up', name: 'Maybe', short: 'Not sure.', alternatives: [{ candidateId: 'spalentor', name: 'Spalentor' }, { candidateId: 'ghost', name: 'Ghost' }] };
+    stubFetch([message([{ type: 'text', text: JSON.stringify(answer) }])]);
+    const out = await identify(env as any, {
+      image: 'aGVsbG8=', lat: 47.5585, lng: 7.5807, heading: 270, lang: 'en',
+      candidates: [{ id: 'spalentor', name: 'Spalentor', wiki: ['en:Spalentor'], distanceM: 40, bearingDeg: 265 }],
+    });
+    expect(out.candidateId).toBeNull();
+    expect(out.alternatives).toEqual([{ candidateId: 'spalentor', name: 'Spalentor' }]);
+  });
+});
+
+describe('/context', () => {
+  it('keeps only notes whose source URL came back from the web search', async () => {
+    const search = { type: 'web_search_tool_result', tool_use_id: 'srv_1', content: [{ type: 'web_search_result', url: 'https://news.example/demo', title: 'Demo', encrypted_content: 'x' }] };
+    const note = (url: string) => ({ type: 'demonstration', effect: 'blocks', title: 'Demo', summary: 'A march.', area: 'Mittlere Brücke', timeWindow: '14-17', affectsStopIds: ['mittlere-bruecke', 'nope'], sourceUrl: url, sourceTitle: 'News' });
+    stubFetch([
+      message([search, { type: 'tool_use', id: 'tu_1', name: 'report_context', input: { notes: [note('https://news.example/demo'), note('https://invented.example/x'), note('')] } }], 'tool_use'),
+    ]);
+    const out = await cityContext(env as any, { date: '2026-11-13', lang: 'en', stops: [{ id: 'mittlere-bruecke', name: 'Middle Bridge' }] });
+    expect(out.notes).toHaveLength(1);
+    expect(out.notes[0].affectsStopIds).toEqual(['mittlere-bruecke']);
+  });
+
+  it('continues a paused server-tool turn', async () => {
+    const sent: any[] = [];
+    stubFetch([
+      message([{ type: 'text', text: 'searching' }], 'pause_turn'),
+      message([{ type: 'tool_use', id: 'tu_1', name: 'report_context', input: { notes: [] } }], 'tool_use'),
+    ], sent);
+    const out = await cityContext(env as any, { date: '2026-11-13', stops: [] });
+    expect(out.notes).toEqual([]);
+    expect(sent).toHaveLength(2);
+    expect(sent[1].messages.at(-1).role).toBe('assistant');
+  });
+});

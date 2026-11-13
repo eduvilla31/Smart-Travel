@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LangContext, translate, loc, type StringKey } from './i18n';
-import type { LatLng, PlannedRoute, Preferences, SavedTour } from './types';
+import type { ActiveTour, LatLng, PlannedRoute, Poi, Preferences, SavedTour } from './types';
 import { load, save } from './lib/storage';
-import { CITY, inCity, loadPlaces } from './lib/places';
+import { CITY, SEED_POIS, inCity, loadPlaces } from './lib/places';
+import { hasApi } from './lib/api';
+import { fetchCityContext, type ContextNote } from './lib/context';
 import { budgets, planRoutes } from './lib/planner';
 import { analyseForecast, fetchForecast, type ForecastData } from './lib/weather';
 import Home from './screens/Home';
@@ -26,6 +28,13 @@ const DEFAULT_PREFS: Preferences = {
 type Screen = 'home' | 'routes' | 'tour' | 'summary';
 export type GpsState = { status: 'pending' } | { status: 'ok'; pos: LatLng & { accuracy: number } } | { status: 'error' };
 export type PlanStatus = null | 'places' | 'routes';
+export type ContextState = { status: 'off' | 'loading' | 'error' } | { status: 'ok'; notes: ContextNote[] };
+
+const ACTIVE_TTL = 12 * 3600 * 1000;
+function loadActiveTour(): ActiveTour | null {
+  const a = load<ActiveTour | null>('activeTour', null);
+  return a && Date.now() - a.savedAt < ACTIVE_TTL ? a : null;
+}
 
 export default function App() {
   const [prefs, setPrefsState] = useState<Preferences>(() => ({ ...DEFAULT_PREFS, ...load('prefs', {}) }));
@@ -40,6 +49,11 @@ export default function App() {
   const [selected, setSelected] = useState(0);
   const [result, setResult] = useState<TourResult | null>(null);
   const [savedTours, setSavedTours] = useState<SavedTour[]>(() => load('savedTours', []));
+  const [places, setPlaces] = useState<Poi[]>(SEED_POIS);
+  const [context, setContext] = useState<ContextState>({ status: hasApi() ? 'loading' : 'off' });
+  const [contextKey, setContextKey] = useState(0);
+  const [activeTour, setActiveTour] = useState<ActiveTour | null>(loadActiveTour);
+  const [resume, setResume] = useState<ActiveTour | null>(null);
 
   const lang = prefs.lang;
   const i18n = useMemo(
@@ -84,6 +98,19 @@ export default function App() {
     refreshForecast();
   }, [refreshForecast]);
 
+  // Today in the city: strikes, closures, events (server-side web search).
+  useEffect(() => {
+    if (!hasApi()) return setContext({ status: 'off' });
+    let cancelled = false;
+    setContext({ status: 'loading' });
+    fetchCityContext(CITY.city.name, CITY.city.timezone, lang, SEED_POIS)
+      .then((notes) => !cancelled && setContext({ status: 'ok', notes }))
+      .catch(() => !cancelled && setContext({ status: 'error' }));
+    return () => {
+      cancelled = true;
+    };
+  }, [lang, contextKey]);
+
   const plannedMinutes = prefs.limitBy === 'duration' ? prefs.durationMin : Math.round((prefs.distanceKm / 4.5) * 60 + 30);
   const weather = useMemo(() => (forecast ? analyseForecast(forecast, plannedMinutes) : null), [forecast, plannedMinutes]);
 
@@ -102,6 +129,11 @@ export default function App() {
       const b = budgets(prefs);
       const places = await loadPlaces(startPlace, b.radiusKm * 1000 + 300);
       setPlacesNote(places.live ? t('placesCount', { n: places.pois.length }) : t('placesFallback'));
+      setPlaces(places.pois);
+      const blocked =
+        context.status === 'ok'
+          ? context.notes.filter((n) => n.effect === 'blocks').flatMap((n) => n.affectsStopIds.map((id) => ({ id, title: n.title })))
+          : [];
       setPlanStatus('routes');
       const sbb = CITY.startPoints.find((s) => s.id === 'sbb')!;
       const rs = await planRoutes({
@@ -111,6 +143,7 @@ export default function App() {
         station: { lat: sbb.lat, lng: sbb.lng, name: loc(sbb.name, lang) },
         weather,
         ignoreWeather,
+        blocked,
         t,
         lang,
       });
@@ -130,10 +163,22 @@ export default function App() {
       stops: r.route.stops.filter((s) => r.visited.includes(s.id)).map((s) => loc(s.name, lang)),
       distanceKm: r.route.distanceKm,
       minutes: r.minutes,
+      route: r.route,
     };
     const next = [entry, ...savedTours.filter((s) => s.id !== entry.id)].slice(0, 30);
     setSavedTours(next);
     save('savedTours', next);
+  };
+
+  const startTour = (route: PlannedRoute, from: ActiveTour | null) => {
+    setRoutes([route]);
+    setSelected(0);
+    setResume(from);
+    setScreen('tour');
+  };
+  const clearActive = () => {
+    save('activeTour', null);
+    setActiveTour(null);
   };
 
   return (
@@ -150,6 +195,13 @@ export default function App() {
           planStatus={planStatus}
           onPlan={plan}
           savedTours={savedTours}
+          places={places}
+          context={context}
+          onApiChanged={() => setContextKey((k) => k + 1)}
+          activeTour={activeTour}
+          onResume={() => activeTour && startTour(activeTour.route, activeTour)}
+          onDiscard={clearActive}
+          onWalkAgain={(r) => startTour(r, null)}
         />
       )}
       {screen === 'routes' && (
@@ -158,17 +210,28 @@ export default function App() {
           selected={selected}
           setSelected={setSelected}
           placesNote={placesNote}
+          context={context}
           weather={ignoreWeather ? null : weather}
           onBack={() => setScreen('home')}
-          onStart={() => setScreen('tour')}
+          onStart={() => {
+            setResume(null);
+            setScreen('tour');
+          }}
         />
       )}
       {screen === 'tour' && routes[selected] && (
         <Tour
           route={routes[selected]}
           radiusM={prefs.triggerRadiusM}
-          onExit={() => setScreen('routes')}
+          places={places}
+          resume={resume}
+          onProgress={(a) => {
+            save('activeTour', a);
+            setActiveTour(a);
+          }}
+          onExit={() => setScreen(routes.length > 1 ? 'routes' : 'home')}
           onEnd={(r) => {
+            clearActive();
             setResult(r);
             setScreen('summary');
           }}

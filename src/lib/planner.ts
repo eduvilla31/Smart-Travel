@@ -124,6 +124,8 @@ export interface PlanContext {
   station: Place;
   weather: WeatherAnalysis | null;
   ignoreWeather: boolean;
+  /** Stops to avoid today (closures, demonstrations), with a short reason. */
+  blocked?: { id: string; title: string }[];
   t: T;
   lang: Lang;
 }
@@ -196,12 +198,21 @@ async function buildOne(
 }
 
 /** Default route + themed alternatives, with weather applied last. */
-export async function planRoutes(ctx: PlanContext): Promise<PlannedRoute[]> {
+export async function planRoutes(ctxIn: PlanContext): Promise<PlannedRoute[]> {
+  let ctx = ctxIn;
   const { prefs, t, lang } = ctx;
   const b = budgets(prefs);
   const endPlace = prefs.end === 'loop' ? ctx.start : prefs.end === 'station' ? ctx.station : undefined;
   const weights: Weights = Object.fromEntries(prefs.interests.map((i) => [i, 1]));
   const w = ctx.ignoreWeather ? null : ctx.weather;
+
+  // City context first: drop stops that are blocked today, and say so.
+  const blocked = new Map((ctx.blocked ?? []).map((b) => [b.id, b.title]));
+  const pois = ctx.pois.filter((p) => !blocked.has(p.id));
+  const contextNotes = ctx.pois
+    .filter((p) => blocked.has(p.id) && haversineM(ctx.start, p) <= b.radiusKm * 1000)
+    .map((p) => t('reasonContext', { stop: loc(p.name, lang), title: blocked.get(p.id)! }));
+  ctx = { ...ctx, pois };
 
   const base: SelectInput = {
     pois: ctx.pois,
@@ -215,7 +226,7 @@ export async function planRoutes(ctx: PlanContext): Promise<PlannedRoute[]> {
     radiusKm: b.radiusKm,
   };
 
-  const weatherNotes: string[] = [];
+  const weatherNotes: string[] = [...contextNotes];
   if (w?.hot) {
     base.parkBonus = 3;
     weatherNotes.push(t('reasonHeat', { temp: w.maxTemp }));
@@ -244,6 +255,7 @@ export async function planRoutes(ctx: PlanContext): Promise<PlannedRoute[]> {
     }
     const indoor = rain.stops.filter((s) => s.indoor).length;
     rain.reasons = [
+      ...contextNotes,
       t('reasonRainShort', { why, min: rain.totalMin, orig: fmtDuration(planned, t), end: rain.end.name }),
       t('reasonRainIndoor', { why: '', indoor, stops: rain.stops.length }).trim(),
       ...rain.reasons.slice(-1),

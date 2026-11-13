@@ -1,5 +1,6 @@
 import type { Lang, Poi } from '../types';
 import { fetchJson, loadCached, saveCached } from './storage';
+import { apiPost, hasApi } from './api';
 
 export interface Narration {
   short: string;
@@ -136,9 +137,29 @@ function seedNarration(poi: Poi, lang: Lang, label: string): Narration | null {
  * then the hand-written seed notes, then a minimal line from the name.
  */
 export async function getNarration(poi: Poi, lang: Lang, seedLabel: string): Promise<Narration> {
-  const key = `narr:v1:${lang}:${poi.id}`;
+  const key = `narr:v2:${lang}:${poi.id}`;
   const name = poi.name[lang] ?? poi.name.en;
   let result: Narration | null = loadCached<Narration>(key, WEEK);
+
+  // 1. Claude, via the Smart Travel server, writing only from the Wikipedia article.
+  if (!result && hasApi()) {
+    try {
+      const facts = poi.text?.[lang] ?? poi.text?.en;
+      const r = await apiPost<Narration>(
+        '/narrate',
+        { name, wiki: poi.wiki, lang, facts: facts ? `${facts.short} ${facts.long ?? ''}`.trim() : undefined },
+        45000,
+      );
+      if (r.short) {
+        result = { ...r, long: r.long || undefined, sourceLabel: r.sourceUrl ? r.sourceLabel : seedLabel };
+        saveCached(key, result);
+      }
+    } catch {
+      /* server down or no source: fall back to the plain Wikipedia extract */
+    }
+  }
+
+  // 2. The Wikipedia article itself, trimmed for speech.
   if (!result) try {
     const target = await resolveTitle(poi, lang);
     if (target) {

@@ -97,4 +97,14 @@ export interface SavedTour {
   stops: string[];
   distanceKm: number;
   minutes: number;
+  /** Kept so the tour can be walked again. */
+  route?: PlannedRoute;
+}
+
+/** A tour in progress, saved so a reload or signal loss doesn't lose it. */
+export interface ActiveTour {
+  route: PlannedRoute;
+  status: Record<string, 'visited' | 'skipped'>;
+  startedAt: number;
+  savedAt: number;
 }
