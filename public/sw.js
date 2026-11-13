@@ -1,6 +1,6 @@
 /* Smart Travel service worker: caches the app shell and map tiles you've seen,
  * so a started tour survives a short signal loss. API calls always go to the network. */
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL = `shell-${VERSION}`;
 const TILES = `tiles-${VERSION}`;
 const MAX_TILES = 400;
@@ -35,7 +35,8 @@ self.addEventListener('fetch', (e) => {
         (hit) =>
           hit ||
           fetch(req).then((res) => {
-            if (res.ok || res.type === 'opaque') {
+            // Only CORS-readable tiles: opaque ones would eat the storage quota.
+            if (res.ok) {
               const copy = res.clone();
               caches.open(TILES).then((c) => c.put(req, copy)).then(trimTiles);
             }

@@ -3,8 +3,9 @@ import { INTEREST_LABELS, fmtDuration, loc, useI18n } from '../i18n';
 import { INTERESTS, LANGS, type ActiveTour, type Interest, type PlannedRoute, type Poi, type Preferences, type SavedTour } from '../types';
 import ContextCard from '../components/ContextCard';
 import PhotoIdentify from '../components/PhotoIdentify';
-import { apiHealth, getApi, setApi } from '../lib/api';
-import { CITY, distanceToCityKm, inCity } from '../lib/places';
+import { apiHealth, getApi, setApi, type ModelId } from '../lib/api';
+import { CITIES, distanceToCityKm, inCity } from '../lib/places';
+import { useCity } from '../city';
 import { describeCode, type WeatherAnalysis } from '../lib/weather';
 import type { ContextState, GpsState, PlanStatus } from '../App';
 
@@ -25,20 +26,24 @@ interface Props {
   activeTour: ActiveTour | null;
   onResume: () => void;
   onDiscard: () => void;
-  onWalkAgain: (r: PlannedRoute) => void;
+  onWalkAgain: (r: PlannedRoute, cityId?: string) => void;
+  onChooseCity: (id: string) => void;
+  planError: string | null;
 }
 
 export default function Home(props: Props) {
   const { prefs, setPrefs, gps, planStatus } = props;
   const { t, lang } = useI18n();
+  const city = useCity();
+  const cityName = loc(city.city.name, lang);
   const [photo, setPhoto] = useState(false);
 
   let greeting = t('locating');
   if (gps.status === 'error') greeting = t('noGps');
   if (gps.status === 'ok')
-    greeting = inCity(gps.pos)
-      ? t('inCity', { city: CITY.city.name })
-      : t('farFromCity', { km: Math.round(distanceToCityKm(gps.pos)), city: CITY.city.name });
+    greeting = inCity(city, gps.pos)
+      ? t('inCity', { city: cityName })
+      : t('farFromCity', { km: Math.round(distanceToCityKm(city, gps.pos)), city: cityName });
 
   const toggleInterest = (i: Interest) => {
     const has = prefs.interests.includes(i);
@@ -46,7 +51,7 @@ export default function Home(props: Props) {
     if (next.length) setPrefs({ interests: next });
   };
 
-  const gpsUsable = gps.status === 'ok' && inCity(gps.pos);
+  const gpsUsable = gps.status === 'ok' && inCity(city, gps.pos);
 
   return (
     <main className="page">
@@ -55,7 +60,7 @@ export default function Home(props: Props) {
           <img src="icons/icon-192.png" alt="" className="brand-icon" />
           <div>
             <h1>{t('appName')}</h1>
-            <p className="subtitle">{t('tagline')} · <strong>{CITY.city.name}</strong></p>
+            <p className="subtitle">{t('tagline')}</p>
           </div>
         </div>
         <div className="lang-switch" role="group" aria-label={t('language')}>
@@ -66,6 +71,14 @@ export default function Home(props: Props) {
           ))}
         </div>
       </header>
+
+      <div className="segmented city-switch" role="radiogroup" aria-label={t('city')}>
+        {CITIES.map((c) => (
+          <button key={c.city.id} type="button" role="radio" aria-checked={c.city.id === city.city.id} onClick={() => props.onChooseCity(c.city.id)}>
+            {loc(c.city.name, lang)}
+          </button>
+        ))}
+      </div>
 
       <p className="greeting" aria-live="polite">📍 {greeting}</p>
 
@@ -138,9 +151,9 @@ export default function Home(props: Props) {
           <select value={prefs.startId} onChange={(e) => setPrefs({ startId: e.target.value })}>
             <option value="gps">
               {t('myLocation')}
-              {gps.status === 'ok' && !gpsUsable ? ` → ${loc(CITY.startPoints[0].name, lang)}` : ''}
+              {gps.status === 'ok' && !gpsUsable ? ` → ${loc(city.startPoints[0].name, lang)}` : ''}
             </option>
-            {CITY.startPoints.map((s) => (
+            {city.startPoints.map((s) => (
               <option key={s.id} value={s.id}>{loc(s.name, lang)}</option>
             ))}
           </select>
@@ -153,7 +166,9 @@ export default function Home(props: Props) {
             <select value={prefs.end} onChange={(e) => setPrefs({ end: e.target.value as Preferences['end'] })}>
               <option value="loop">{t('endLoop')}</option>
               <option value="oneway">{t('endOneway')}</option>
-              <option value="station">{t('endStation')}</option>
+              <option value="station">
+                {t('endStation')} ({loc((city.startPoints.find((s) => s.id === city.city.stationId) ?? city.startPoints[0]).name, lang)})
+              </option>
             </select>
           </label>
           <label className="field">
@@ -174,6 +189,7 @@ export default function Home(props: Props) {
         <button className="btn btn-primary btn-block" type="submit" disabled={!!planStatus}>
           {planStatus === 'places' ? t('loadingPlaces') : planStatus === 'routes' ? t('loadingRoutes') : t('suggest')}
         </button>
+        {props.planError && <p className="status-line" role="alert">⚠️ {props.planError}</p>}
       </form>
 
       <button className="btn btn-block identify-btn" type="button" onClick={() => setPhoto(true)}>
@@ -195,7 +211,7 @@ export default function Home(props: Props) {
                 </span>
                 {s.route && (
                   <div className="btn-row">
-                    <button className="btn btn-small" type="button" onClick={() => props.onWalkAgain(s.route!)}>↺ {t('walkAgain')}</button>
+                    <button className="btn btn-small" type="button" onClick={() => props.onWalkAgain(s.route!, s.cityId)}>↺ {t('walkAgain')}</button>
                   </div>
                 )}
               </li>
@@ -211,6 +227,7 @@ export default function Home(props: Props) {
 
 function WeatherCard({ weather, weatherError, ignoreWeather, setIgnoreWeather }: Props) {
   const { t, lang } = useI18n();
+  const city = useCity();
   if (!weather)
     return (
       <section className="card weather" aria-live="polite">
@@ -228,7 +245,7 @@ function WeatherCard({ weather, weatherError, ignoreWeather, setIgnoreWeather }:
         <span className="weather-icon">{d.icon}</span>
         <div>
           <div className="weather-title">
-            {CITY.city.name}: {weather.currentTemp}°C, {d.text}
+            {loc(city.city.name, lang)}: {weather.currentTemp}°C, {d.text}
           </div>
           <div className="muted small">{t('weatherWindow', { prob: weather.maxProb, temp: weather.maxTemp })}</div>
         </div>
@@ -268,6 +285,7 @@ function ServerSettings({ onChanged }: { onChanged: () => void }) {
   const [url, setUrl] = useState(getApi().url);
   const [code, setCode] = useState(getApi().code);
   const [key, setKey] = useState(getApi().key);
+  const [model, setModel] = useState<ModelId>(getApi().model);
   const [state, setState] = useState<'off' | 'ok' | 'err' | 'checking'>(getApi().url || getApi().key ? 'checking' : 'off');
 
   const check = async () => {
@@ -295,6 +313,22 @@ function ServerSettings({ onChanged }: { onChanged: () => void }) {
       <p className="muted small" style={{ margin: '12px 0 6px' }}>{t('ownKeyHint')}</p>
       <input className="text-input" type="password" autoComplete="off" placeholder="sk-ant-…" value={key}
         onChange={(e) => setKey(e.target.value)} onBlur={commit} aria-label={t('ownKey')} />
+      {key && !url && (
+        <select
+          value={model}
+          aria-label={t('model')}
+          style={{ marginTop: 8 }}
+          onChange={(e) => {
+            const m = e.target.value as ModelId;
+            setModel(m);
+            setApi({ model: m });
+            onChanged();
+          }}
+        >
+          <option value="claude-haiku-5-5">Claude Haiku · {t('modelCheap')}</option>
+          <option value="claude-opus-5-5">Claude Opus · {t('modelBest')}</option>
+        </select>
+      )}
       <p className="muted small">
         {state === 'ok' ? `✅ ${url ? t('serverOk') : t('ownKeyOk')}` : state === 'err' ? `⚠️ ${t('serverErr')}` : state === 'checking' ? '…' : t('serverOff')}
       </p>

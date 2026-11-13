@@ -143,8 +143,52 @@ for n in NEW:
         "text": {"en": {"short": n["short"]}, "es": {"short": n["shortEs"]}},
     })
 
+# Corrections checked against Wikidata (November 2026): coordinates, ids, and the
+# Wikipedia titles that really exist. Entries not listed here are unverified ("approx").
+FIX = {
+    "rathaus": dict(lat=47.5583, lng=7.5883, wikidata="Q688984", wiki=["en:Basel Town Hall", "es:Ayuntamiento de Basilea"]),
+    "muenster": dict(lat=47.55639, lng=7.5925, wikidata="Q666479", wiki=["en:Basel Minster", "es:Catedral de Basilea", "de:Basler Münster"]),
+    "spalentor": dict(lat=47.5581, lng=7.58139, wikidata="Q667144", wiki=["de:Spalentor"]),
+    "petersplatz": dict(lat=47.5594, lng=7.58306, wikidata="Q2079730", wiki=["en:University of Basel", "es:Universidad de Basilea", "de:Petersplatz (Basel)"]),
+    "kunsthalle": dict(lat=47.55389, lng=7.59083, wikidata="Q614652", wiki=["en:Kunsthalle Basel", "es:Kunsthalle (Basilea)"]),
+    "historisches-museum": dict(lat=47.55444, lng=7.59056, wikidata="Q386286", wiki=["de:Historisches Museum Basel", "es:Museo de Historia de Basilea"]),
+    "elisabethenkirche": dict(lat=47.5528, lng=7.59111, wikidata="Q687022", wiki=["de:Elisabethenkirche (Basel)"]),
+    "kunstmuseum": dict(lat=47.55417, lng=7.59417, wikidata="Q194626", wiki=["en:Kunstmuseum Basel", "es:Museo de Arte de Basilea"]),
+    "museum-tinguely": dict(lat=47.55917, lng=7.61222, wikidata="Q180904", wiki=["en:Museum Tinguely", "es:Museo Tinguely"]),
+    "papiermuehle": dict(lat=47.555, lng=7.604, wikidata="Q594378", wiki=["en:Basel Paper Mill", "es:Molino de Papel de Basilea"]),
+    "st-alban-tor": dict(lat=47.5534, lng=7.60325, wikidata="Q392077", wiki=["de:St. Alban-Tor"]),
+    "roche-tower": dict(lat=47.55831, lng=7.60764, wikidata="Q15712780", wiki=["en:Roche Tower", "es:Torre Roche 1"]),
+    "kaserne": dict(lat=47.5629, lng=7.5898, wikidata="Q1726074", wiki=["de:Kaserne Basel"]),
+    # Wikidata gives the middle of the bridge (47.57083, 7.58472); the stop is on the Kleinbasel bank.
+    "dreirosen": dict(lat=47.5709, lng=7.5867, wikidata="Q687157", wiki=["de:Dreirosenbrücke"]),
+    "markthalle": dict(lat=47.54944, lng=7.58722, wikidata="Q1901023", wiki=["de:Markthalle Basel", "es:Markthalle Basel"]),
+    "botanischer-garten": dict(lat=47.55861, lng=7.58167, wikidata="Q600792", wiki=["de:Botanischer Garten der Universität Basel", "es:Jardín botánico de la universidad de Basilea"]),
+    "elisabethenanlage": dict(lat=47.54958, lng=7.59063, wikidata="Q112957152", wiki=["de:Elisabethenanlage"]),
+    "wettsteinbruecke": dict(lat=47.55639, lng=7.59611, wikidata="Q1597642", wiki=["de:Wettsteinbrücke"]),
+    "picassoplatz": dict(wikidata="Q1647965", wiki=["de:Picassoplatz"]),
+    "hammering-man": dict(wiki=["en:Hammering Man"]),
+    "messeplatz": dict(wiki=["en:Messe Basel"]),
+    # Titles below did not resolve on Wikipedia, so these stops use the hand-written notes.
+    "tinguely-brunnen": dict(lat=47.5537, lng=7.5906, wikidata="Q683514", wiki=["de:Fasnachts-Brunnen"]),
+    "fischmarkt": dict(lat=47.55923, lng=7.58697, wikidata="Q19362806", wiki=[]),
+    "holbeinbrunnen": dict(lat=47.55725, lng=7.58283, wikidata="Q29684291", wiki=[]),
+    "cartoonmuseum": dict(lat=47.55447, lng=7.59635, wikidata="Q676514",
+                          wiki=["en:Cartoonmuseum Basel – Centre for Narrative Art", "es:Museo de la caricatura y el dibujo animado de Basilea"]),
+    "mittlere-bruecke": dict(wiki=[]), "pfalz": dict(wiki=[]), "muensterfaehre": dict(wiki=[]),
+}
+for p in pois:
+    fix = FIX.get(p["id"])
+    if fix:
+        p.update(fix)
+    if not (fix and "lat" in fix):
+        p["approx"] = True
+
 out = {
-    "city": {"id": "basel", "name": "Basel", "center": [47.5596, 7.5886], "radiusKm": 15, "timezone": "Europe/Zurich"},
+    "city": {
+        "id": "basel", "name": {"en": "Basel", "es": "Basilea"}, "country": "Switzerland",
+        "center": [47.5596, 7.5886], "radiusKm": 15, "timezone": "Europe/Zurich",
+        "detourFactor": 1.3, "triggerRadiusM": 25, "stationId": "sbb",
+    },
     "startPoints": [
         {"id": "marktplatz", "name": {"en": "Marktplatz (old town)", "es": "Marktplatz (casco antiguo)"}, "lat": 47.5577, "lng": 7.5875},
         {"id": "sbb", "name": {"en": "Basel SBB station", "es": "Estación Basel SBB"}, "lat": 47.5476, "lng": 7.5897},

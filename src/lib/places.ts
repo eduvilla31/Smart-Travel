@@ -1,10 +1,17 @@
-import seed from '../data/basel-seed.json';
+import baselSeed from '../data/basel-seed.json';
+import veniceSeed from '../data/venice-seed.json';
 import type { CityData, Interest, LatLng, Poi } from '../types';
 import { haversineM } from './geo';
 import { fetchJson, loadCached, saveCached } from './storage';
 
-export const CITY = seed as unknown as CityData;
-export const SEED_POIS: Poi[] = CITY.pois.map((p) => ({ ...p, source: 'seed' as const }));
+const withSource = (c: unknown): CityData => {
+  const city = c as CityData;
+  return { ...city, pois: city.pois.map((p) => ({ ...p, source: 'seed' as const })) };
+};
+
+/** Supported cities. To add one, drop a seed file in src/data and list it here. */
+export const CITIES: CityData[] = [withSource(baselSeed), withSource(veniceSeed)];
+export const cityById = (id: string): CityData => CITIES.find((c) => c.city.id === id) ?? CITIES[0];
 
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 const DAY = 24 * 3600 * 1000;
@@ -18,15 +25,15 @@ interface OsmElement {
   tags?: Record<string, string>;
 }
 
-export function inCity(p: LatLng): boolean {
-  const [lat, lng] = CITY.city.center;
-  return haversineM(p, { lat, lng }) <= CITY.city.radiusKm * 1000;
-}
-
-export function distanceToCityKm(p: LatLng): number {
-  const [lat, lng] = CITY.city.center;
+export function distanceToCityKm(city: CityData, p: LatLng): number {
+  const [lat, lng] = city.city.center;
   return haversineM(p, { lat, lng }) / 1000;
 }
+
+export const inCity = (city: CityData, p: LatLng) => distanceToCityKm(city, p) <= city.city.radiusKm;
+
+/** The supported city this position is inside, if any. */
+export const cityAt = (p: LatLng): CityData | undefined => CITIES.find((c) => inCity(c, p));
 
 function overpassQuery(c: LatLng, r: number): string {
   const a = `(around:${Math.round(r)},${c.lat.toFixed(5)},${c.lng.toFixed(5)})`;
@@ -176,13 +183,13 @@ export interface PlacesResult { pois: Poi[]; live: boolean }
  * Candidate places around `center`: the curated seed (always) plus live
  * OpenStreetMap results, cached for a day.
  */
-export async function loadPlaces(center: LatLng, radiusM: number): Promise<PlacesResult> {
+export async function loadPlaces(city: CityData, center: LatLng, radiusM: number): Promise<PlacesResult> {
   const r = Math.min(Math.max(radiusM, 800), 3500);
-  const key = `places:v1:${center.lat.toFixed(3)},${center.lng.toFixed(3)}:${Math.round(r / 250) * 250}`;
+  const key = `places:v2:${city.city.id}:${center.lat.toFixed(3)},${center.lng.toFixed(3)}:${Math.round(r / 250) * 250}`;
   const cached = loadCached<Poi[]>(key, DAY);
   if (cached) return { pois: cached, live: true };
 
-  const seedNearby = SEED_POIS.filter((p) => haversineM(p, center) <= r + 500);
+  const seedNearby = city.pois.filter((p) => haversineM(p, center) <= r + 500);
   let osm: Poi[] = [];
   let live = false;
   for (const endpoint of OVERPASS) {

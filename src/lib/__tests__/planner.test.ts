@@ -1,8 +1,12 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { setRouterGapMs } from '../routing';
 import { translate } from '../../i18n';
 import type { Preferences } from '../../types';
 import { haversineM } from '../geo';
-import { CITY, SEED_POIS, importance, classify, mergePlaces } from '../places';
+import { cityById, importance, classify, mergePlaces } from '../places';
+
+const CITY = cityById('basel');
+const SEED_POIS = CITY.pois;
 import { planRoutes, selectStops, budgets } from '../planner';
 import { analyseForecast, type ForecastData } from '../weather';
 import { buildFromExtract, cleanForSpeech, sentences } from '../narration';
@@ -10,6 +14,7 @@ import { buildFromExtract, cleanForSpeech, sentences } from '../narration';
 beforeAll(() => {
   // No network in tests: every service "fails", so the app's fallbacks are exercised.
   vi.stubGlobal('fetch', () => Promise.reject(new Error('offline')));
+  setRouterGapMs(0);
 });
 
 const sp = (id: string) => {
@@ -18,8 +23,8 @@ const sp = (id: string) => {
 };
 const t = (k: Parameters<typeof translate>[1], v?: Record<string, string | number>) => translate('en', k, v);
 const prefs = (p: Partial<Preferences> = {}): Preferences => ({
-  lang: 'en', limitBy: 'duration', durationMin: 120, distanceKm: 5, interests: ['historic'],
-  startId: 'marktplatz', end: 'loop', pace: 'normal', avoidStairs: false, triggerRadiusM: 25, ...p,
+  lang: 'en', cityId: 'basel', limitBy: 'duration', durationMin: 120, distanceKm: 5, interests: ['historic'],
+  startId: 'marktplatz', end: 'loop', pace: 'normal', avoidStairs: false, ...p,
 });
 
 function forecast(prob: number, code = 3): ForecastData {
@@ -54,10 +59,11 @@ describe('places (milestone 2)', () => {
 
   it('merges an OSM twin into the seed entry instead of duplicating it', () => {
     const seed = SEED_POIS.filter((p) => p.id === 'spalentor');
-    const osm = [{ ...seed[0], id: 'osm-way-1', name: { en: 'Spalentor' }, source: 'osm' as const, wikidata: 'Q123', wiki: [] }];
+    const osm = [{ ...seed[0], id: 'osm-way-1', name: { en: 'Spalentor' }, source: 'osm' as const, wiki: [], osmUrl: 'https://www.openstreetmap.org/way/1', openingHours: 'Mo-Su' }];
     const merged = mergePlaces(seed, osm);
     expect(merged).toHaveLength(1);
-    expect(merged[0].wikidata).toBe('Q123');
+    expect(merged[0].id).toBe('spalentor');
+    expect(merged[0].openingHours).toBe('Mo-Su');
   });
 });
 

@@ -284,3 +284,11 @@ select {
   border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-height: 44px;
 }
 .identify-btn { margin-bottom: 14px; }
+.city-switch { margin-bottom: 12px; }
+
+/* Narrow phones: keep the top bar on one line and the stop list in one column. */
+.topbar-title .muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 520px) {
+  .mini-stops { columns: 1; }
+  .tour .icon-btn { width: 40px; height: 40px; }
+}
