@@ -17,9 +17,11 @@ interface QueryRes {
 }
 
 async function query(lang: string, params: Record<string, string>, timeoutMs = 6000): Promise<QueryRes> {
-  const q = new URLSearchParams({ format: 'json', redirects: '1', ...params });
+  // origin=* allows the call from a browser too (the app's "own key" mode).
+  const q = new URLSearchParams({ format: 'json', redirects: '1', origin: '*', ...params });
+  const inBrowser = typeof (globalThis as { document?: unknown }).document !== 'undefined';
   const res = await fetch(`https://${lang}.wikipedia.org/w/api.php?${q}`, {
-    headers: { 'User-Agent': UA },
+    headers: inBrowser ? {} : { 'User-Agent': UA },
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw new Error(`wikipedia ${res.status}`);

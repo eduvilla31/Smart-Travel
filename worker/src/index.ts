@@ -15,6 +15,8 @@ export interface Env {
   /** Optional shared code friends type into the app, so strangers can't spend your credits. */
   ACCESS_CODE?: string;
   MODEL?: string;
+  /** Set when this code runs inside the phone app with the user's own key. */
+  browser?: boolean;
 }
 
 const DEFAULT_MODEL = 'claude-opus-5-5';
@@ -67,7 +69,8 @@ async function cached<T>(name: string, keyMaterial: string, ttlSec: number, make
 }
 
 async function ask(env: Env, params: Params): Promise<Anthropic.Beta.BetaMessage> {
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+  // In "own key" mode the app calls Claude straight from the phone; the key never leaves that device.
+  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, dangerouslyAllowBrowser: !!env.browser });
   const res = await client.beta.messages.create({
     model: env.MODEL || DEFAULT_MODEL,
     betas: BETAS,
