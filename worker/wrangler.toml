@@ -1,0 +1,12 @@
+name = "smart-travel-api"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# Who may call the API from a browser. Add your GitHub Pages origin.
+ALLOWED_ORIGINS = "https://eduvilla31.github.io"
+
+# Secrets (set with `npx wrangler secret put NAME`, never committed):
+#   ANTHROPIC_API_KEY  - required
+#   ACCESS_CODE        - recommended: a code friends type into the app

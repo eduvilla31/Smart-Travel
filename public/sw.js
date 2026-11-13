@@ -1,6 +1,6 @@
 /* Smart Travel service worker: caches the app shell and map tiles you've seen,
  * so a started tour survives a short signal loss. API calls always go to the network. */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = `shell-${VERSION}`;
 const TILES = `tiles-${VERSION}`;
 const MAX_TILES = 400;

@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import MapView, { type MapStop } from '../components/MapView';
+import ContextCard from '../components/ContextCard';
+import type { ContextState } from '../App';
 import { fmtDuration, loc, useI18n } from '../i18n';
 import type { PlannedRoute } from '../types';
 import type { WeatherAnalysis } from '../lib/weather';
@@ -9,12 +11,13 @@ interface Props {
   selected: number;
   setSelected: (i: number) => void;
   placesNote: string | null;
+  context: ContextState;
   weather: WeatherAnalysis | null;
   onBack: () => void;
   onStart: () => void;
 }
 
-export default function RoutesScreen({ routes, selected, setSelected, placesNote, onBack, onStart }: Props) {
+export default function RoutesScreen({ routes, selected, setSelected, placesNote, context, onBack, onStart }: Props) {
   const { t, lang } = useI18n();
   const route = routes[selected];
   const stops: MapStop[] = useMemo(
@@ -45,6 +48,7 @@ export default function RoutesScreen({ routes, selected, setSelected, placesNote
 
       <section className="panel">
         {routes.length === 0 && <p>{t('reasonShort', { n: 0 })}</p>}
+        <ContextCard context={context} />
         <div className="route-cards" role="radiogroup">
           {routes.map((r, i) => (
             <button

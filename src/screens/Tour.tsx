@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MapView, { type MapMe, type MapStop } from '../components/MapView';
+import PhotoIdentify from '../components/PhotoIdentify';
 import { fmtDist, fmtDuration, loc, useI18n, type StringKey } from '../i18n';
-import type { LatLng, PlannedRoute, Poi, RouteStep } from '../types';
-import { useGeolocation, useWakeLock } from '../hooks';
+import type { ActiveTour, LatLng, PlannedRoute, Poi, RouteStep } from '../types';
+import { useGeolocation, useOnline, useWakeLock } from '../hooks';
 import { haversineM, pointAlong } from '../lib/geo';
 import { getNarration, type Narration } from '../lib/narration';
 import { CITY } from '../lib/places';
@@ -14,6 +15,11 @@ export interface TourResult { route: PlannedRoute; visited: string[]; startedAt:
 interface Props {
   route: PlannedRoute;
   radiusM: number;
+  /** All loaded places, for photo identification off-route. */
+  places: Poi[];
+  /** Saved progress to pick up from (reload, signal loss). */
+  resume: ActiveTour | null;
+  onProgress: (a: ActiveTour) => void;
   onExit: () => void;
   onEnd: (r: TourResult) => void;
 }
@@ -37,11 +43,16 @@ function turnKey(s: RouteStep): StringKey | null {
   }
 }
 
-export default function Tour({ route, radiusM, onExit, onEnd }: Props) {
+export default function Tour({ route, radiusM, places, resume, onProgress, onExit, onEnd }: Props) {
   const { t, lang } = useI18n();
+  // A resumed tour still waits for a tap: iOS only allows speech after one.
   const [started, setStarted] = useState(false);
-  const [status, setStatus] = useState<Record<string, StopState>>({});
-  const [activeId, setActiveId] = useState<string | null>(route.stops[0]?.id ?? null);
+  const [status, setStatus] = useState<Record<string, StopState>>(resume?.status ?? {});
+  const [activeId, setActiveId] = useState<string | null>(
+    route.stops.find((s) => !resume?.status[s.id])?.id ?? route.stops[0]?.id ?? null,
+  );
+  const [photo, setPhoto] = useState(false);
+  const online = useOnline();
   const [narr, setNarr] = useState<Record<string, Narration>>({});
   const [sim, setSim] = useState(false);
   const [simSpeed, setSimSpeed] = useState(5);
@@ -55,7 +66,7 @@ export default function Tour({ route, radiusM, onExit, onEnd }: Props) {
   const [focus, setFocus] = useState<(LatLng & { key: number }) | undefined>();
   const [follow, setFollow] = useState(true);
 
-  const startedAt = useRef(Date.now());
+  const startedAt = useRef(resume?.startedAt ?? Date.now());
   const lastStep = useRef(-1);
   const simDist = useRef(0);
   const nudged = useRef(false);
@@ -84,6 +95,12 @@ export default function Tour({ route, radiusM, onExit, onEnd }: Props) {
       speech.stop();
     };
   }, []);
+
+  // Save progress so a reload or a dropped connection can resume the tour.
+  useEffect(() => {
+    if (started) onProgress({ route, status, startedAt: startedAt.current, savedAt: Date.now() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started, status, route]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -220,8 +237,12 @@ export default function Tour({ route, radiusM, onExit, onEnd }: Props) {
 
   const start = () => {
     speech.unlock();
-    startedAt.current = Date.now();
     setStarted(true);
+    if (resume) {
+      announceNext();
+      return;
+    }
+    startedAt.current = Date.now();
     const first = route.stops[0];
     say(
       t('tourIntro', {
@@ -316,6 +337,7 @@ export default function Tour({ route, radiusM, onExit, onEnd }: Props) {
         >
           {muted ? '🔇' : '🔊'}
         </button>
+        <button className="icon-btn" type="button" aria-label={t('identifyTitle')} onClick={() => setPhoto(true)}>📷</button>
         {started && (
           <button className="icon-btn" type="button" aria-label={t('walkScreen')} onClick={() => setDim(true)}>🌙</button>
         )}
@@ -352,9 +374,10 @@ export default function Tour({ route, radiusM, onExit, onEnd }: Props) {
       </div>
 
       <section className="panel">
+        {!online && <div className="offline-banner">📴 {t('offline')}</div>}
         {!started && (
           <div className="start-row">
-            <button className="btn btn-primary btn-block" type="button" onClick={start}>▶ {t('start')}</button>
+            <button className="btn btn-primary btn-block" type="button" onClick={start}>▶ {resume ? t('resumeTour') : t('start')}</button>
             {!speech.supported() && <p className="muted small center">{t('speechUnsupported')}</p>}
           </div>
         )}
@@ -465,6 +488,13 @@ export default function Tour({ route, radiusM, onExit, onEnd }: Props) {
         </div>
       )}
       {toast && <div className="toast" role="status">{toast}</div>}
+      {photo && (
+        <PhotoIdentify
+          pois={[...route.stops, ...places.filter((p) => !route.stops.includes(p))]}
+          position={me && !me.sim ? me : null}
+          onClose={() => setPhoto(false)}
+        />
+      )}
     </main>
   );
 }

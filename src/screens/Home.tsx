@@ -1,8 +1,12 @@
+import { useEffect, useState } from 'react';
 import { INTEREST_LABELS, fmtDuration, loc, useI18n } from '../i18n';
-import { INTERESTS, LANGS, type Interest, type Preferences, type SavedTour } from '../types';
+import { INTERESTS, LANGS, type ActiveTour, type Interest, type PlannedRoute, type Poi, type Preferences, type SavedTour } from '../types';
+import ContextCard from '../components/ContextCard';
+import PhotoIdentify from '../components/PhotoIdentify';
+import { apiHealth, getApi, setApi } from '../lib/api';
 import { CITY, distanceToCityKm, inCity } from '../lib/places';
 import { describeCode, type WeatherAnalysis } from '../lib/weather';
-import type { GpsState, PlanStatus } from '../App';
+import type { ContextState, GpsState, PlanStatus } from '../App';
 
 interface Props {
   prefs: Preferences;
@@ -15,11 +19,19 @@ interface Props {
   planStatus: PlanStatus;
   onPlan: () => void;
   savedTours: SavedTour[];
+  places: Poi[];
+  context: ContextState;
+  onApiChanged: () => void;
+  activeTour: ActiveTour | null;
+  onResume: () => void;
+  onDiscard: () => void;
+  onWalkAgain: (r: PlannedRoute) => void;
 }
 
 export default function Home(props: Props) {
   const { prefs, setPrefs, gps, planStatus } = props;
   const { t, lang } = useI18n();
+  const [photo, setPhoto] = useState(false);
 
   let greeting = t('locating');
   if (gps.status === 'error') greeting = t('noGps');
@@ -57,7 +69,21 @@ export default function Home(props: Props) {
 
       <p className="greeting" aria-live="polite">📍 {greeting}</p>
 
+      {props.activeTour && (
+        <section className="card resume-card">
+          <strong>{props.activeTour.route.title}</strong>
+          <p className="muted small">
+            {Object.keys(props.activeTour.status).length}/{props.activeTour.route.stops.length} {t('stops')}
+          </p>
+          <div className="btn-row">
+            <button className="btn btn-primary" type="button" onClick={props.onResume}>▶ {t('resumeTour')}</button>
+            <button className="btn btn-ghost" type="button" onClick={props.onDiscard}>{t('discard')}</button>
+          </div>
+        </section>
+      )}
+
       <WeatherCard {...props} />
+      <ContextCard context={props.context} />
 
       <form
         className="card"
@@ -142,12 +168,20 @@ export default function Home(props: Props) {
             <input type="checkbox" checked={prefs.avoidStairs} onChange={(e) => setPrefs({ avoidStairs: e.target.checked })} />
             <span>{t('avoidStairs')}</span>
           </label>
+          <ServerSettings onChanged={props.onApiChanged} />
         </details>
 
         <button className="btn btn-primary btn-block" type="submit" disabled={!!planStatus}>
           {planStatus === 'places' ? t('loadingPlaces') : planStatus === 'routes' ? t('loadingRoutes') : t('suggest')}
         </button>
       </form>
+
+      <button className="btn btn-block identify-btn" type="button" onClick={() => setPhoto(true)}>
+        📷 {t('identifyTitle')}
+      </button>
+      {photo && (
+        <PhotoIdentify pois={props.places} position={gps.status === 'ok' ? gps.pos : null} onClose={() => setPhoto(false)} />
+      )}
 
       {props.savedTours.length > 0 && (
         <section className="card">
@@ -159,6 +193,11 @@ export default function Home(props: Props) {
                 <span className="muted small">
                   {new Date(s.date).toLocaleDateString(lang)} · {s.stops.length} {t('stops')} · {s.distanceKm} km · {s.minutes} {t('min')}
                 </span>
+                {s.route && (
+                  <div className="btn-row">
+                    <button className="btn btn-small" type="button" onClick={() => props.onWalkAgain(s.route!)}>↺ {t('walkAgain')}</button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -220,5 +259,41 @@ function WeatherCard({ weather, weatherError, ignoreWeather, setIgnoreWeather }:
         </div>
       )}
     </section>
+  );
+}
+
+/** Where the Smart Travel server lives, plus the optional access code. */
+function ServerSettings({ onChanged }: { onChanged: () => void }) {
+  const { t } = useI18n();
+  const [url, setUrl] = useState(getApi().url);
+  const [code, setCode] = useState(getApi().code);
+  const [state, setState] = useState<'off' | 'ok' | 'err' | 'checking'>(getApi().url ? 'checking' : 'off');
+
+  const check = async () => {
+    if (!getApi().url) return setState('off');
+    setState('checking');
+    setState((await apiHealth()).ok ? 'ok' : 'err');
+  };
+  useEffect(() => {
+    check();
+  }, []);
+
+  const commit = () => {
+    setApi({ url: url.trim(), code: code.trim() });
+    check();
+    onChanged();
+  };
+
+  return (
+    <fieldset className="field">
+      <legend className="field-label">{t('server')}</legend>
+      <input className="text-input" type="url" inputMode="url" placeholder="https://smart-travel-api.…workers.dev"
+        value={url} onChange={(e) => setUrl(e.target.value)} onBlur={commit} aria-label={t('serverUrl')} />
+      <input className="text-input" type="password" placeholder={t('accessCode')} value={code}
+        onChange={(e) => setCode(e.target.value)} onBlur={commit} aria-label={t('accessCode')} style={{ marginTop: 8 }} />
+      <p className="muted small">
+        {state === 'ok' ? `✅ ${t('serverOk')}` : state === 'err' ? `⚠️ ${t('serverErr')}` : state === 'checking' ? '…' : t('serverOff')}
+      </p>
+    </fieldset>
   );
 }

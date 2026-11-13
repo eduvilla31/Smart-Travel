@@ -39,3 +39,14 @@ export function pointAlong(path: LatLng[], distM: number): { point: LatLng; done
   }
   return { point: path[path.length - 1], done: true };
 }
+
+/** Compass bearing from a to b in degrees (0 = north). */
+export function bearingDeg(a: LatLng, b: LatLng): number {
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const y = Math.sin(rad(b.lng - a.lng)) * Math.cos(rad(b.lat));
+  const x = Math.cos(rad(a.lat)) * Math.sin(rad(b.lat)) - Math.sin(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.cos(rad(b.lng - a.lng));
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+/** Smallest difference between two bearings, 0..180. */
+export const angleDiff = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);

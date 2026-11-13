@@ -1,0 +1,49 @@
+name: Deploy Smart Travel server (Cloudflare Worker)
+
+# Runs only when the Cloudflare secrets exist, so the repo stays green without them.
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['worker/**', '.github/workflows/deploy-worker.yml']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_CF: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+      HAS_CODE: ${{ secrets.ACCESS_CODE != '' }}
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+      - name: Deploy
+        if: env.HAS_CF == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          secrets: |
+            ANTHROPIC_API_KEY
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Set access code
+        if: env.HAS_CF == 'true' && env.HAS_CODE == 'true'
+        run: printf '%s' "$ACCESS_CODE" | npx wrangler secret put ACCESS_CODE
+        env:
+          ACCESS_CODE: ${{ secrets.ACCESS_CODE }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Skipped
+        if: env.HAS_CF != 'true'
+        run: echo "CLOUDFLARE_API_TOKEN is not set; built and tested only. See README → Smart Travel server."
