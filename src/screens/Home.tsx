@@ -267,10 +267,11 @@ function ServerSettings({ onChanged }: { onChanged: () => void }) {
   const { t } = useI18n();
   const [url, setUrl] = useState(getApi().url);
   const [code, setCode] = useState(getApi().code);
-  const [state, setState] = useState<'off' | 'ok' | 'err' | 'checking'>(getApi().url ? 'checking' : 'off');
+  const [key, setKey] = useState(getApi().key);
+  const [state, setState] = useState<'off' | 'ok' | 'err' | 'checking'>(getApi().url || getApi().key ? 'checking' : 'off');
 
   const check = async () => {
-    if (!getApi().url) return setState('off');
+    if (!getApi().url && !getApi().key) return setState('off');
     setState('checking');
     setState((await apiHealth()).ok ? 'ok' : 'err');
   };
@@ -279,7 +280,7 @@ function ServerSettings({ onChanged }: { onChanged: () => void }) {
   }, []);
 
   const commit = () => {
-    setApi({ url: url.trim(), code: code.trim() });
+    setApi({ url: url.trim(), code: code.trim(), key: key.trim() });
     check();
     onChanged();
   };
@@ -291,8 +292,11 @@ function ServerSettings({ onChanged }: { onChanged: () => void }) {
         value={url} onChange={(e) => setUrl(e.target.value)} onBlur={commit} aria-label={t('serverUrl')} />
       <input className="text-input" type="password" placeholder={t('accessCode')} value={code}
         onChange={(e) => setCode(e.target.value)} onBlur={commit} aria-label={t('accessCode')} style={{ marginTop: 8 }} />
+      <p className="muted small" style={{ margin: '12px 0 6px' }}>{t('ownKeyHint')}</p>
+      <input className="text-input" type="password" autoComplete="off" placeholder="sk-ant-…" value={key}
+        onChange={(e) => setKey(e.target.value)} onBlur={commit} aria-label={t('ownKey')} />
       <p className="muted small">
-        {state === 'ok' ? `✅ ${t('serverOk')}` : state === 'err' ? `⚠️ ${t('serverErr')}` : state === 'checking' ? '…' : t('serverOff')}
+        {state === 'ok' ? `✅ ${url ? t('serverOk') : t('ownKeyOk')}` : state === 'err' ? `⚠️ ${t('serverErr')}` : state === 'checking' ? '…' : t('serverOff')}
       </p>
     </fieldset>
   );

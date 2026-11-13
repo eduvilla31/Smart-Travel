@@ -4,20 +4,42 @@ import { load, save } from './storage';
  * The Smart Travel server (Cloudflare Worker in /worker) holds the Claude API key.
  * Its URL comes from the build (VITE_API_URL) and can be changed in the app settings.
  */
-export interface ApiConfig { url: string; code: string }
+export interface ApiConfig { url: string; code: string; /** The user's own Anthropic key, stored only on this device. */ key: string }
 
 const BUILD_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
 
 export function getApi(): ApiConfig {
   const saved = load<Partial<ApiConfig>>('api', {});
-  return { url: (saved.url ?? BUILD_URL).trim().replace(/\/+$/, ''), code: saved.code ?? '' };
+  return { url: (saved.url ?? BUILD_URL).trim().replace(/\/+$/, ''), code: saved.code ?? '', key: (saved.key ?? '').trim() };
 }
 
 export function setApi(cfg: Partial<ApiConfig>) {
   save('api', { ...load<Partial<ApiConfig>>('api', {}), ...cfg });
 }
 
-export const hasApi = () => !!getApi().url;
+export const hasApi = () => !!getApi().url || !!getApi().key;
+
+/** Without a server, run the same code as the server, here on the phone, with the user's key. */
+async function direct<T>(path: string, body: unknown): Promise<T> {
+  const core = await import('../../worker/src/index'); // loaded only when needed
+  const env = { ANTHROPIC_API_KEY: getApi().key, browser: true };
+  try {
+    switch (path) {
+      case '/narrate':
+        return (await core.narrate(env, body as Parameters<typeof core.narrate>[1])) as T;
+      case '/identify':
+        return (await core.identify(env, body as Parameters<typeof core.identify>[1])) as T;
+      case '/context':
+        return (await core.cityContext(env, body as Parameters<typeof core.cityContext>[1])) as T;
+      default:
+        throw new ApiError(404, 'Not found');
+    }
+  } catch (e) {
+    if (e instanceof ApiError) throw e;
+    const status = (e as { status?: number }).status ?? 500;
+    throw new ApiError(status, e instanceof Error ? e.message : 'Error');
+  }
+}
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -26,7 +48,8 @@ export class ApiError extends Error {
 }
 
 export async function apiPost<T>(path: string, body: unknown, timeoutMs = 30000): Promise<T> {
-  const { url, code } = getApi();
+  const { url, code, key } = getApi();
+  if (!url && key) return direct<T>(path, body);
   if (!url) throw new ApiError(0, 'No server configured');
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -46,7 +69,8 @@ export async function apiPost<T>(path: string, body: unknown, timeoutMs = 30000)
 }
 
 export async function apiHealth(): Promise<{ ok: boolean; accessCode?: boolean }> {
-  const { url } = getApi();
+  const { url, key } = getApi();
+  if (!url && key) return { ok: key.startsWith('sk-ant-') };
   if (!url) return { ok: false };
   try {
     const res = await fetch(`${url}/health`, { signal: AbortSignal.timeout(8000) });

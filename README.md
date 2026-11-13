@@ -53,7 +53,19 @@ On Android, Chrome offers **Install app** from the ⋮ menu.
 2. Pick a route and tap **Start tour**. This tap also unlocks audio on iPhone, so keep the phone's silent switch off and the volume up.
 3. Turn on **Simulate walk** and choose a speed (try 15×). The purple dot walks the route, pauses while each stop is narrated, then continues.
 
-## Smart Travel server (Claude features)
+## Claude features: three ways to run them
+
+The Claude features are Claude-written narration, real photo recognition, and "Today in Basel" news. They need an Anthropic API key (console.anthropic.com → API keys, pay as you go). Pick one:
+
+| Option | Setup | Who gets Claude features | Key safety |
+|---|---|---|---|
+| **1. None** | Nothing | Nobody. The app uses Wikipedia narration, a location-only photo guess and no news | – |
+| **2. Your own key on your phone** (recommended to start) | Paste the key in **More options → Smart Travel server → Your Anthropic API key** | Only phones where a key is pasted | The key is stored only on that phone and sent only to Anthropic. It is never in the code or on GitHub. Don't paste it on phones you don't trust |
+| **3. Cloudflare server** | One-time setup below | Everyone with the link (plus the access code) | The key stays on the server and friends never see it |
+
+Options 2 and 3 run the same code (`worker/src`), so the results are identical. Rough cost on Claude Opus 5.5: a few cents per stop narration (cached afterwards), about a cent or two per photo, and a few cents for each daily news check. A full walk is usually well under US$1. Set a monthly spend limit in the Anthropic console to be safe.
+
+### Option 3: Smart Travel server (Cloudflare)
 
 The Claude API key must never be in the app, because anyone could read it there. It lives in a small free **Cloudflare Worker** (`worker/`), which the app calls. You need an Anthropic API key (console.anthropic.com) and a free Cloudflare account.
 
