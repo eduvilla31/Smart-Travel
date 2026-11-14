@@ -101,6 +101,8 @@ If your Pages address isn't `https://eduvilla31.github.io`, change `ALLOWED_ORIG
 
 ## Safety, privacy and what was checked
 
+For developers: the full security write-up, with the exact policy, the threat model and the known limitations, is in [SECURITY.md](SECURITY.md).
+
 **What leaves your phone**
 
 | Goes to | What | When |
