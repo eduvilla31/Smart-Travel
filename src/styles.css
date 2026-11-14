@@ -295,7 +295,7 @@ select {
 
 /* ---------- City picker ---------- */
 .city-picker { margin-bottom: 12px; display: grid; gap: 8px; }
-.city-chips { gap: 6px; }
+.here-btn { justify-self: start; }
 .city-search { display: flex; gap: 8px; }
 .city-search .text-input { flex: 1; min-width: 0; }
 .search-results { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden; }

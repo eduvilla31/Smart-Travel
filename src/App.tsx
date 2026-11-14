@@ -4,7 +4,7 @@ import { LangContext, translate, loc, type StringKey } from './i18n';
 import type { ActiveTour, CityData, LatLng, PlannedRoute, Poi, Preferences, SavedTour } from './types';
 import { load, save } from './lib/storage';
 import { cityAt, cityById, inCity, isCurated, loadPlaces } from './lib/places';
-import { findRecent, isCustomCity, makeCity, rememberCity, reverseCity } from './lib/geocode';
+import { currentCity, forgetSearchHistory, isCustomCity, makeCity, reverseCity, setCurrentCity } from './lib/geocode';
 import { setDetourFactor } from './lib/geo';
 import { hasApi } from './lib/api';
 import { fetchCityContext, type ContextNote } from './lib/context';
@@ -56,7 +56,7 @@ export default function App() {
   const [savedTours, setSavedTours] = useState<SavedTour[]>(() => load('savedTours', []));
   // Curated cities (Basel, Venice) or any city the user searched for or is standing in.
   const city = useMemo(
-    () => (isCustomCity(prefs.cityId) ? findRecent(prefs.cityId) ?? cityById('basel') : cityById(prefs.cityId)),
+    () => (isCustomCity(prefs.cityId) ? currentCity(prefs.cityId) ?? cityById('basel') : cityById(prefs.cityId)),
     [prefs.cityId],
   );
   const [detect, setDetect] = useState<DetectState>('idle');
@@ -112,7 +112,7 @@ export default function App() {
         const found = await reverseCity(gps.pos, lang);
         if (!found) throw new Error('not found');
         const c = makeCity(found);
-        rememberCity(c);
+        setCurrentCity(c);
         setPrefs({ cityId: c.city.id, startId: 'gps' });
         setDetect('idle');
       } catch {
@@ -131,9 +131,14 @@ export default function App() {
     if (id !== prefs.cityId) setPrefs({ cityId: id, startId: isCurated(id) ? 'gps' : 'centre' });
   };
   const chooseSearched = (c: CityData) => {
-    rememberCity(c);
+    // Typed "Basel" or "Venice"? Use the built-in city with its hand-picked places.
+    const [lat, lng] = c.city.center;
+    const curated = cityAt({ lat, lng });
+    if (curated) return chooseCity(curated.city.id);
+    setCurrentCity(c);
     chooseCity(c.city.id);
   };
+  useEffect(() => forgetSearchHistory(), []);
   const useHere = () => {
     pickedCity.current = true;
     detectHere(true);
@@ -241,6 +246,7 @@ export default function App() {
     const entry: SavedTour = {
       id: r.route.id,
       cityId: city.city.id,
+      city: isCustomCity(city.city.id) ? city : undefined,
       date: new Date(r.startedAt).toISOString(),
       title: r.route.title,
       stops: r.route.stops.filter((s) => r.visited.includes(s.id)).map((s) => loc(s.name, lang)),
@@ -253,7 +259,8 @@ export default function App() {
     save('savedTours', next);
   };
 
-  const startTour = (route: PlannedRoute, from: ActiveTour | null, cityId?: string) => {
+  const startTour = (route: PlannedRoute, from: ActiveTour | null, cityId?: string, cityData?: CityData) => {
+    if (cityData) setCurrentCity(cityData);
     if (cityId && cityId !== prefs.cityId) chooseCity(cityId);
     setRoutes([route]);
     setSelected(0);
@@ -284,14 +291,14 @@ export default function App() {
           context={context}
           onApiChanged={() => setContextKey((k) => k + 1)}
           activeTour={activeTour}
-          onResume={() => activeTour && startTour(activeTour.route, activeTour, activeTour.cityId)}
+          onResume={() => activeTour && startTour(activeTour.route, activeTour, activeTour.cityId, activeTour.city)}
           onChooseCity={chooseCity}
           onChooseSearched={chooseSearched}
           onUseHere={useHere}
           detect={detect}
           planError={planError}
           onDiscard={clearActive}
-          onWalkAgain={(r, cityId) => startTour(r, null, cityId)}
+          onWalkAgain={(r, cityId, cityData) => startTour(r, null, cityId, cityData)}
         />
       )}
       {screen === 'routes' && (

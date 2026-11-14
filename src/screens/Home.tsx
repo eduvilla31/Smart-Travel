@@ -30,7 +30,7 @@ interface Props {
   activeTour: ActiveTour | null;
   onResume: () => void;
   onDiscard: () => void;
-  onWalkAgain: (r: PlannedRoute, cityId?: string) => void;
+  onWalkAgain: (r: PlannedRoute, cityId?: string, city?: CityData) => void;
   onChooseCity: (id: string) => void;
   onChooseSearched: (c: CityData) => void;
   onUseHere: () => void;
@@ -221,7 +221,7 @@ export default function Home(props: Props) {
                 </span>
                 {s.route && (
                   <div className="btn-row">
-                    <button className="btn btn-small" type="button" onClick={() => props.onWalkAgain(s.route!, s.cityId)}>↺ {t('walkAgain')}</button>
+                    <button className="btn btn-small" type="button" onClick={() => props.onWalkAgain(s.route!, s.cityId, s.city)}>↺ {t('walkAgain')}</button>
                   </div>
                 )}
               </li>

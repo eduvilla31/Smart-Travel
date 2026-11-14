@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { loc, useI18n } from '../i18n';
-import { useCity } from '../city';
+import { useI18n } from '../i18n';
 import type { CityData } from '../types';
-import { CITIES } from '../lib/places';
-import { makeCity, recentCities, searchPlaces, type PlaceResult } from '../lib/geocode';
+import { makeCity, searchPlaces, type PlaceResult } from '../lib/geocode';
 import type { DetectState } from '../App';
 
 interface Props {
@@ -14,17 +12,13 @@ interface Props {
   gpsReady: boolean;
 }
 
-/** Curated cities, recent searches, "use my location", and a search for anywhere. */
-export default function CityPicker({ onChoose, onChooseSearched, onUseHere, detect, gpsReady }: Props) {
+/** One open search field for any city, plus "use my location". Nothing is remembered. */
+export default function CityPicker({ onChooseSearched, onUseHere, detect, gpsReady }: Props) {
   const { t, lang } = useI18n();
-  const city = useCity();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<PlaceResult[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const chips: CityData[] = [...CITIES, ...recentCities().filter((c) => !CITIES.some((x) => x.city.id === c.city.id))];
-  if (!chips.some((c) => c.city.id === city.city.id)) chips.push(city);
 
   const search = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,22 +44,13 @@ export default function CityPicker({ onChoose, onChooseSearched, onUseHere, dete
 
   return (
     <section className="city-picker" aria-label={t('city')}>
-      <div className="chips city-chips">
-        {chips.map((c) => (
-          <button key={c.city.id} type="button" className="chip" aria-pressed={c.city.id === city.city.id} onClick={() => onChoose(c.city.id)}>
-            {loc(c.city.name, lang)}
-          </button>
-        ))}
-        <button type="button" className="chip" onClick={onUseHere} disabled={!gpsReady || detect === 'detecting'}>
-          {detect === 'detecting' ? `⏳ ${t('detecting')}` : `📍 ${t('useHere')}`}
-        </button>
-      </div>
       {detect === 'failed' && <p className="muted small">{t('detectFailed')}</p>}
 
       <form className="city-search" onSubmit={search} role="search">
         <input
           className="text-input"
           type="search"
+          autoComplete="off"
           enterKeyHint="search"
           placeholder={t('searchPlaceholder')}
           value={query}
@@ -76,6 +61,9 @@ export default function CityPicker({ onChoose, onChooseSearched, onUseHere, dete
           {busy ? '…' : t('search')}
         </button>
       </form>
+      <button type="button" className="btn btn-small btn-ghost here-btn" onClick={onUseHere} disabled={!gpsReady || detect === 'detecting'}>
+        {detect === 'detecting' ? `⏳ ${t('detecting')}` : `📍 ${t('useHere')}`}
+      </button>
 
       {error && <p className="muted small">{error}</p>}
       {results && results.length > 0 && (
