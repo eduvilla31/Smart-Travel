@@ -34,14 +34,18 @@ Preferences, saved tours and caches live in the browser's `localStorage`, and no
 (see `securityHeaders()` in `vite.config.ts`):
 
 ```
-default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
+default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline';
 img-src 'self' data: blob: https://tile.openstreetmap.org;
 connect-src 'self' https://*.wikipedia.org https://www.wikidata.org https://nominatim.openstreetmap.org
   https://overpass-api.de https://overpass.kumi.systems https://routing.openstreetmap.de
   https://api.open-meteo.com https://api.anthropic.com https://*.workers.dev;
-font-src 'self'; media-src 'self'; worker-src 'self'; manifest-src 'self';
+font-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self';
 object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests
 ```
+
+`'wasm-unsafe-eval'` lets the optional on-phone voice (below) run as WebAssembly; it does not
+allow `eval` of JavaScript, and the WebAssembly comes from the app's own origin. `blob:` media is
+the generated audio.
 
 The built `index.html` contains no inline scripts, and only bundled code runs: there are no
 CDN scripts (Leaflet is bundled) and no `eval`. This was tested in Chromium against the
@@ -66,6 +70,14 @@ an outside host and a tracking pixel were all blocked. All app flows still work 
 (CORS responses only, capped at 400 tiles). API responses are never cached by the service worker.
 
 **Referrer policy:** `strict-origin-when-cross-origin`, so third parties see at most the origin.
+
+## Natural AI voice (optional, on the phone)
+
+When switched on, an open-source text-to-speech model (Kokoro 82M, Apache-2.0) runs in the
+browser as WebAssembly. The model (pinned revision), its voices and the ONNX runtime are fetched
+**at build time** and served from the app's own origin (`/models/`, `/ort/`). At runtime nothing is
+requested from Hugging Face or any CDN, and the narration text never leaves the phone. The download
+is about 90 MB once, then it comes from the browser's cache.
 
 ## Secrets
 

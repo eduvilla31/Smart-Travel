@@ -11,6 +11,7 @@ import { fetchForecast, minutesUntilRain } from '../lib/weather';
 import * as speech from '../lib/speech';
 import { safeUrl } from '../lib/safe';
 import { startCompass } from '../lib/compass';
+import { neuralPref } from '../lib/neuralVoice';
 
 export interface TourResult { route: PlannedRoute; visited: string[]; startedAt: number; minutes: number }
 
@@ -100,6 +101,20 @@ export default function Tour({ route, radiusM, places, resume, onProgress, onExi
     };
   }, []);
 
+  // Natural voice: prepare the next two stops' stories while walking, so they play at once.
+  useEffect(() => {
+    if (!started) return;
+    const todo = route.stops.filter((s) => !status[s.id]);
+    const texts: string[] = [];
+    todo.slice(0, 2).forEach((s, i) => {
+      const n = narr[s.id];
+      if (n?.lang === 'en') texts.push(n.short);
+      // the "Next: …" line spoken after this stop's story
+      texts.push(todo[i + 1] ? `${t('next')}: ${loc(todo[i + 1].name, 'en')}.` : t('allDone'));
+    });
+    if (lang === 'en') speech.prefetch(texts, 'en');
+  }, [started, status, narr, route, lang, t]);
+
   // Save progress so a reload or a dropped connection can resume the tour.
   useEffect(() => {
     if (started)
@@ -164,7 +179,10 @@ export default function Tour({ route, radiusM, places, resume, onProgress, onExi
     const nxt = route.stops.find((s) => !statusRef.current[s.id]);
     const pos = meRef.current;
     if (!nxt) return say(t('allDone'));
-    const dist = pos ? `, ${fmtDist(haversineM(pos, nxt))}` : '';
+    // With the natural voice the line has no distance, so it can be prepared in advance
+    // (the distance is on screen anyway).
+    const natural = lang === 'en' && neuralPref().on;
+    const dist = pos && !natural ? `, ${fmtDist(haversineM(pos, nxt))}` : '';
     return say(`${t('next')}: ${loc(nxt.name, lang)}${dist}.`);
   }, [route, say, t, lang]);
 

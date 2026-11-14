@@ -311,3 +311,5 @@ select {
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; opacity: 0; }
 .photo-btn { position: relative; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; }
 .photo-btn.disabled { opacity: 0.45; pointer-events: none; }
+.voice-progress { width: 100%; height: 8px; margin-top: 8px; accent-color: var(--primary); }
+.natural-voice { border: 1px solid var(--border); border-radius: 12px; padding: 12px; }

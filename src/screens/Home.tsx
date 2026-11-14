@@ -6,6 +6,7 @@ import PhotoIdentify from '../components/PhotoIdentify';
 import { apiHealth, getApi, setApi, type ModelId } from '../lib/api';
 import * as speech from '../lib/speech';
 import { startCompass } from '../lib/compass';
+import { NEURAL_VOICES, loadNeural, neuralPref, neuralState, neuralSupported, onNeuralState, setNeuralPref, type NeuralVoiceId } from '../lib/neuralVoice';
 import { isAllowedServer } from '../lib/safe';
 import { distanceToCityKm, inCity } from '../lib/places';
 import CityPicker from '../components/CityPicker';
@@ -200,6 +201,7 @@ export default function Home(props: Props) {
             <input type="checkbox" checked={prefs.avoidStairs} onChange={(e) => setPrefs({ avoidStairs: e.target.checked })} />
             <span>{t('avoidStairs')}</span>
           </label>
+          <NaturalVoiceSettings />
           <VoiceSettings />
           <ServerSettings onChanged={props.onApiChanged} />
         </details>
@@ -425,6 +427,85 @@ function VoiceSettings() {
         </button>
       </div>
       <p className="muted small">{t('voiceTip')}</p>
+    </fieldset>
+  );
+}
+
+/** The free on-phone AI voice: switch, voice choice, download progress, test. */
+function NaturalVoiceSettings() {
+  const { t, lang } = useI18n();
+  const [pref, setPref] = useState(neuralPref);
+  const [state, setState] = useState(neuralState);
+  const [testing, setTesting] = useState(false);
+  useEffect(() => {
+    const off = onNeuralState(setState);
+    return () => {
+      off();
+    };
+  }, []);
+  if (!neuralSupported()) return null;
+
+  const update = (p: Partial<typeof pref>) => {
+    setNeuralPref(p);
+    setPref(neuralPref());
+  };
+  const status =
+    state.status === 'loading'
+      ? t('naturalLoading', { pct: state.progress })
+      : state.status === 'ready'
+        ? `✅ ${t('naturalReady')}`
+        : state.status === 'error'
+          ? `⚠️ ${t('naturalFailed')}`
+          : '';
+
+  return (
+    <fieldset className="field natural-voice">
+      <legend className="field-label">✨ {t('naturalVoice')}</legend>
+      <label className="toggle">
+        <input
+          type="checkbox"
+          checked={pref.on}
+          onChange={(e) => {
+            update({ on: e.target.checked });
+            if (e.target.checked) loadNeural().catch(() => undefined);
+          }}
+        />
+        <span>{t('naturalOn')}</span>
+      </label>
+      {pref.on && (
+        <>
+          <div className="city-search">
+            <select value={pref.voice} aria-label={t('naturalVoice')} onChange={(e) => update({ voice: e.target.value as NeuralVoiceId })}>
+              {NEURAL_VOICES.map((v) => (
+                <option key={v.id} value={v.id}>{v[lang]}</option>
+              ))}
+            </select>
+            <button
+              className="btn btn-small"
+              type="button"
+              disabled={state.status === 'loading' || testing}
+              onClick={async () => {
+                speech.unlock();
+                setTesting(true);
+                try {
+                  await loadNeural();
+                  await speech.speak(t('naturalSample'), 'en', { waitForNatural: true });
+                } catch {
+                  /* status line shows the problem */
+                } finally {
+                  setTesting(false);
+                }
+              }}
+            >
+              {testing ? '…' : `▶ ${t('voiceTest')}`}
+            </button>
+          </div>
+          {state.status === 'loading' && <progress max={100} value={state.progress} className="voice-progress" />}
+          {testing && <p className="muted small" aria-live="polite">{t('naturalPreparing')}</p>}
+          {status && <p className="muted small" aria-live="polite">{status}</p>}
+        </>
+      )}
+      <p className="muted small">{t('naturalHint')}</p>
     </fieldset>
   );
 }
