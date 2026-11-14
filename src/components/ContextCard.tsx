@@ -2,6 +2,7 @@ import { loc, useI18n } from '../i18n';
 import { useCity } from '../city';
 import type { ContextState } from '../App';
 import { NOTE_ICON } from '../lib/context';
+import { safeUrl } from '../lib/safe';
 
 /** "Today in Basel": strikes, closures, events, each with its source link. */
 export default function ContextCard({ context }: { context: ContextState }) {
@@ -16,13 +17,13 @@ export default function ContextCard({ context }: { context: ContextState }) {
       {context.status === 'ok' && context.notes.length === 0 && <p className="muted small">{t('contextNone')}</p>}
       {context.status === 'ok' && context.notes.length > 0 && (
         <ul className="context-list">
-          {context.notes.map((n) => (
+          {context.notes.filter((n) => safeUrl(n.sourceUrl)).map((n) => (
             <li key={n.sourceUrl + n.title} className={n.effect}>
               <strong>{NOTE_ICON[n.type]} {n.title}</strong>
               <span>{n.summary}</span>
               <span className="muted small">
                 {[n.area, n.timeWindow].filter(Boolean).join(' · ')} ·{' '}
-                <a href={n.sourceUrl} target="_blank" rel="noopener noreferrer">{n.sourceTitle || t('source')}</a>
+                <a href={safeUrl(n.sourceUrl)} target="_blank" rel="noopener noreferrer">{n.sourceTitle || t('source')}</a>
               </span>
             </li>
           ))}

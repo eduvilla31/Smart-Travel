@@ -41,6 +41,36 @@ class HttpError extends Error {
 
 // ---------- plumbing ----------
 
+/** Compare secrets without leaking, through timing, how many characters matched. */
+export function sameSecret(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a);
+  const y = new TextEncoder().encode(b);
+  let diff = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return diff === 0;
+}
+
+/**
+ * Best-effort limit per visitor (per IP, per server instance): stops a leaked
+ * access code or a runaway loop from burning through the owner's credits quickly.
+ */
+const LIMITS: Record<string, number> = { '/narrate': 60, '/identify': 20, '/context': 10 }; // per 10 minutes
+const WINDOW_MS = 10 * 60 * 1000;
+const hits = new Map<string, number[]>();
+export function rateLimited(ip: string, path: string, now = Date.now()): boolean {
+  const key = `${ip}|${path}`;
+  const recent = (hits.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
+  const limit = LIMITS[path] ?? 30;
+  if (recent.length >= limit) {
+    hits.set(key, recent);
+    return true;
+  }
+  recent.push(now);
+  hits.set(key, recent);
+  if (hits.size > 5000) hits.clear(); // keep memory bounded
+  return false;
+}
+
 function corsHeaders(req: Request, env: Env): Record<string, string> {
   const origin = req.headers.get('Origin') ?? '';
   const allowed = (env.ALLOWED_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -382,7 +412,8 @@ export default {
       if (!env.ANTHROPIC_API_KEY) throw new HttpError(500, 'ANTHROPIC_API_KEY is not set on the worker.');
       // Locked by default: without an access code anyone who finds the URL could spend the owner's credits.
       if (!env.ACCESS_CODE && env.OPEN_ACCESS !== 'true') throw new HttpError(503, 'Server is locked: set the ACCESS_CODE secret (or OPEN_ACCESS="true").');
-      if (env.ACCESS_CODE && req.headers.get('X-Access-Code') !== env.ACCESS_CODE) throw new HttpError(401, 'Wrong access code.');
+      if (env.ACCESS_CODE && !sameSecret(req.headers.get('X-Access-Code') ?? '', env.ACCESS_CODE)) throw new HttpError(401, 'Wrong access code.');
+      if (rateLimited(req.headers.get('CF-Connecting-IP') ?? 'unknown', path)) throw new HttpError(429, 'Too many requests, try again in a few minutes.');
       if (Number(req.headers.get('Content-Length') ?? 0) > 4_000_000) throw new HttpError(413, 'Request too large.');
 
       const raw = await req.text();

@@ -1,4 +1,5 @@
 import { load, save } from './storage';
+import { isAllowedServer } from './safe';
 
 /**
  * The Smart Travel server (Cloudflare Worker in /worker) holds the Claude API key.
@@ -21,9 +22,10 @@ const BUILD_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
 export function getApi(): ApiConfig {
   const saved = load<Partial<ApiConfig>>('api', {});
   return {
-    url: (saved.url ?? BUILD_URL).trim().replace(/\/+$/, ''),
+    // Only https Cloudflare Workers (or the server built into the app) may receive data.
+    url: [saved.url ?? BUILD_URL].map((u) => u.trim().replace(/\/+$/, '')).find((u) => u && isAllowedServer(u)) ?? '',
     code: saved.code ?? '',
-    key: (saved.key ?? '').trim(),
+    key: /^sk-ant-[\w-]+$/.test((saved.key ?? '').trim()) ? (saved.key ?? '').trim() : '',
     model: MODELS.includes(saved.model as ModelId) ? (saved.model as ModelId) : 'claude-haiku-5-5',
   };
 }
