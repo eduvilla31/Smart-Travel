@@ -78,7 +78,8 @@ export async function reverseCity(p: LatLng, lang: Lang): Promise<PlaceResult | 
   const key = `rev:v1:${lang}:${p.lat.toFixed(2)},${p.lng.toFixed(2)}`;
   const hit = loadCached<PlaceResult | null>(key, 86400 * 1000);
   if (hit) return hit;
-  const url = `${NOMINATIM}/reverse?format=jsonv2&zoom=10&addressdetails=1&accept-language=${lang}&lat=${p.lat}&lon=${p.lng}`;
+  // Rounded to ~1 km: enough to name the city, without sending the exact position.
+  const url = `${NOMINATIM}/reverse?format=jsonv2&zoom=10&addressdetails=1&accept-language=${lang}&lat=${p.lat.toFixed(2)}&lon=${p.lng.toFixed(2)}`;
   const r = await fetchJson<NominatimResult & { error?: string }>(url, {}, 12000);
   if (r.error) return null;
   const res = toResult(r);
