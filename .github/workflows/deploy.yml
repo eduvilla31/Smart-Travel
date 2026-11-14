@@ -36,7 +36,7 @@ jobs:
           # Set under Settings → Secrets and variables → Actions → Variables
           VITE_API_URL: ${{ vars.API_URL }}
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
