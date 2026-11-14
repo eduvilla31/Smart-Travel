@@ -4,10 +4,13 @@ import { INTERESTS, LANGS, type ActiveTour, type Interest, type PlannedRoute, ty
 import ContextCard from '../components/ContextCard';
 import PhotoIdentify from '../components/PhotoIdentify';
 import { apiHealth, getApi, setApi, type ModelId } from '../lib/api';
-import { CITIES, distanceToCityKm, inCity } from '../lib/places';
+import * as speech from '../lib/speech';
+import { distanceToCityKm, inCity } from '../lib/places';
+import CityPicker from '../components/CityPicker';
+import type { CityData } from '../types';
 import { useCity } from '../city';
 import { describeCode, type WeatherAnalysis } from '../lib/weather';
-import type { ContextState, GpsState, PlanStatus } from '../App';
+import type { ContextState, DetectState, GpsState, PlanStatus } from '../App';
 
 interface Props {
   prefs: Preferences;
@@ -28,6 +31,9 @@ interface Props {
   onDiscard: () => void;
   onWalkAgain: (r: PlannedRoute, cityId?: string) => void;
   onChooseCity: (id: string) => void;
+  onChooseSearched: (c: CityData) => void;
+  onUseHere: () => void;
+  detect: DetectState;
   planError: string | null;
 }
 
@@ -72,13 +78,13 @@ export default function Home(props: Props) {
         </div>
       </header>
 
-      <div className="segmented city-switch" role="radiogroup" aria-label={t('city')}>
-        {CITIES.map((c) => (
-          <button key={c.city.id} type="button" role="radio" aria-checked={c.city.id === city.city.id} onClick={() => props.onChooseCity(c.city.id)}>
-            {loc(c.city.name, lang)}
-          </button>
-        ))}
-      </div>
+      <CityPicker
+        onChoose={props.onChooseCity}
+        onChooseSearched={props.onChooseSearched}
+        onUseHere={props.onUseHere}
+        detect={props.detect}
+        gpsReady={gps.status === 'ok'}
+      />
 
       <p className="greeting" aria-live="polite">📍 {greeting}</p>
 
@@ -166,9 +172,11 @@ export default function Home(props: Props) {
             <select value={prefs.end} onChange={(e) => setPrefs({ end: e.target.value as Preferences['end'] })}>
               <option value="loop">{t('endLoop')}</option>
               <option value="oneway">{t('endOneway')}</option>
-              <option value="station">
-                {t('endStation')} ({loc((city.startPoints.find((s) => s.id === city.city.stationId) ?? city.startPoints[0]).name, lang)})
-              </option>
+{!city.city.noStation && (
+                <option value="station">
+                  {t('endStation')} ({loc((city.startPoints.find((st) => st.id === city.city.stationId) ?? city.startPoints[0]).name, lang)})
+                </option>
+              )}
             </select>
           </label>
           <label className="field">
@@ -183,6 +191,7 @@ export default function Home(props: Props) {
             <input type="checkbox" checked={prefs.avoidStairs} onChange={(e) => setPrefs({ avoidStairs: e.target.checked })} />
             <span>{t('avoidStairs')}</span>
           </label>
+          <VoiceSettings />
           <ServerSettings onChanged={props.onApiChanged} />
         </details>
 
@@ -332,6 +341,56 @@ function ServerSettings({ onChanged }: { onChanged: () => void }) {
       <p className="muted small">
         {state === 'ok' ? `✅ ${url ? t('serverOk') : t('ownKeyOk')}` : state === 'err' ? `⚠️ ${t('serverErr')}` : state === 'checking' ? '…' : t('serverOff')}
       </p>
+    </fieldset>
+  );
+}
+
+/** Pick the narration voice; the most natural one is chosen automatically. */
+function VoiceSettings() {
+  const { t, lang } = useI18n();
+  const [voices, setVoices] = useState(() => speech.listVoices(lang));
+  const [chosen, setChosen] = useState(() => speech.preferredVoice(lang));
+
+  useEffect(() => {
+    const refresh = () => setVoices(speech.listVoices(lang));
+    refresh();
+    setChosen(speech.preferredVoice(lang));
+    const off = speech.onVoicesChanged(refresh);
+    return () => {
+      off();
+    };
+  }, [lang]);
+
+  if (!speech.supported()) return null;
+  const quality = (v: SpeechSynthesisVoice) => {
+    const s = speech.voiceScore(v, lang);
+    return s >= 100 ? ' ★★★' : s >= 50 ? ' ★★' : s >= 0 ? '' : ' ✕';
+  };
+
+  return (
+    <fieldset className="field">
+      <legend className="field-label">{t('voice')}</legend>
+      <div className="city-search">
+        <select
+          value={chosen}
+          aria-label={t('voice')}
+          onChange={(e) => {
+            setChosen(e.target.value);
+            speech.setPreferredVoice(lang, e.target.value);
+          }}
+        >
+          <option value="">{t('voiceAuto')}{voices[0] ? ` · ${voices[0].name}` : ''}</option>
+          {voices.map((v) => (
+            <option key={v.voiceURI} value={v.voiceURI}>
+              {v.name} ({v.lang}){quality(v)}
+            </option>
+          ))}
+        </select>
+        <button className="btn btn-small" type="button" onClick={() => speech.speak(t('voiceSample'), lang)}>
+          ▶ {t('voiceTest')}
+        </button>
+      </div>
+      <p className="muted small">{t('voiceTip')}</p>
     </fieldset>
   );
 }

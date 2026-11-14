@@ -36,7 +36,9 @@ export interface Poi extends LatLng {
   approx?: boolean;
   /** Hand-written fallback narration (used when Wikipedia is unreachable). */
   text?: Partial<Record<Lang, StopText>>;
-  source: 'seed' | 'osm';
+  source: 'seed' | 'osm' | 'wiki';
+  /** Wikipedia article length: a rough notability signal for places found via Wikipedia. */
+  articleLength?: number;
   osmUrl?: string;
   openingHours?: string;
 }
@@ -57,6 +59,8 @@ export interface CityData {
     triggerRadiusM: number;
     /** Start point used for "end at the station". */
     stationId: string;
+    /** Searched cities have no known station, so "end at the station" is hidden. */
+    noStation?: boolean;
   };
   startPoints: StartPoint[];
   pois: Poi[];

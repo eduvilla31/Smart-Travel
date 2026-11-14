@@ -45,6 +45,8 @@ export function describeCode(code: number, lang: Lang): { icon: string; text: st
 export const isWetCode = (c: number) => (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95;
 
 export interface ForecastData {
+  /** IANA time zone of the location (Open-Meteo resolves it when asked for "auto"). */
+  timezone?: string;
   current: { time: string; temperature_2m: number; precipitation: number; weather_code: number; wind_speed_10m: number };
   hourly: {
     time: string[];

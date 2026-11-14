@@ -1,6 +1,6 @@
 # Smart Travel
 
-A self-guided audio walking-tour web app. You pick how long you want to walk and what you care about, and it suggests routes. It narrates each stop in your headphones when you get close. Cities: **Basel** and **Venice**. English and Spanish.
+A self-guided audio walking-tour web app. You pick how long you want to walk and what you care about, and it suggests routes. It narrates each stop in your headphones when you get close. Works in **any city**: Basel and Venice have hand-picked places, and everywhere else uses OpenStreetMap and Wikipedia. English and Spanish.
 
 It's a mobile web app (PWA): no accounts, no app store. You open a link and add it to your home screen.
 
@@ -17,7 +17,8 @@ It's a mobile web app (PWA): no accounts, no app store. You open a link and add 
 | 7 | City context | ✅ "Today in Basel": strikes, demonstrations, closures, transport, markets and events, found by Claude with web search. Every note links its source. Notes without a source, or with a link the search didn't return, are dropped. Blocked stops are routed around, with the reason shown |
 | 8 | Polish | ✅ Saved tours with "Walk again", EN/ES language switch, resume a tour after a reload or signal loss, offline banner, cached narration + map tiles |
 | + | Simulate walk | ✅ Walks a virtual you along the route (1×–40×) to test from anywhere |
-| + | Cities | ✅ Basel and Venice. The app switches to the city you are standing in; you can also pick one at the top of the home screen |
+| + | Any city | ✅ The app detects the city you are in ("📍 Where I am"), or you search for any city, area or place ("I'm in Kyoto" works). Basel and Venice have curated places; other cities use OpenStreetMap, with Wikipedia's nearby articles as a backup |
+| + | Natural voice | ✅ Picks the most natural voice on the phone (Premium/Enhanced on iPhone, Google voices on Android), with a voice chooser and Test button under **More options** |
 
 **Narration** comes from Claude when the server is set up, written only from the stop's Wikipedia article. Without the server, it is the article's own text trimmed for speech, and if Wikipedia is unreachable, the hand-written notes in `src/data/basel-seed.json`. Every stop links its source.
 
@@ -127,10 +128,20 @@ There are no accounts, no analytics and no ads. Preferences, saved tours and cac
 - Coordinates and Wikipedia titles of the curated places were checked against Wikidata. Entries marked `"approx": true` in the seed files could not be checked that way (11 of 33 in Basel, 7 of 39 in Venice) and are placed from memory, so their 25–35 m trigger may be off.
 - **Not verified:** the Overpass places query (both servers were unreachable from the test machine, so only the built-in list was exercised), real Claude calls (no API key was available; the Claude API was simulated), and real phones (iPhone speech, GPS and compass were tested only in a desktop browser emulating a phone).
 
+## Getting a more natural voice
+
+The app speaks with the voices built into the phone, and picks the best one automatically. The biggest improvement is free:
+
+- **iPhone:** Settings → Accessibility → **Read & Speak** (called **Spoken Content** on older iOS) → **Voices** → English (and Spanish) → download a voice marked **Premium** or **Enhanced**. Then in the app: **More options → Narration voice → Test**, and pick it. Siri's own voices can't be used by websites.
+- **Android:** Chrome uses Google's voices, which already sound fairly natural.
+
+An even more human voice would need a paid text-to-speech service (and its own key), which could be added to the server later.
+
 ## Known limits
 
 - **Screen lock:** web apps lose GPS and audio when the phone locks. The app keeps the screen on during a tour, and the 🌙 button gives a dark walking screen. A native app would fix this later.
 - **GPS drift:** 10–30 m in narrow old-town streets, worse in Venice's alleys. Each stop triggers only once, within 25 m in Basel and 35 m in Venice. The radius grows a little when GPS accuracy is poor.
+- **Searched cities:** places, stories and walking paths come from free public services, so quality depends on what OpenStreetMap and Wikipedia have for that area. Stories are in English when no Spanish article exists.
 - **Venice and steps:** almost every bridge has steps. "Avoid stairs" leaves out the big stepped bridges as stops, but the walking path will still cross small bridges.
 - **Voices:** browser voices vary by phone. iPhone has good English and Spanish voices built in. You can download better ones under Settings → Accessibility → Spoken Content → Voices.
 - **Free services:** Overpass, Wikipedia and the FOSSGIS walking router are free and rate-limited. The app caches places for a day and narration for a week. If the walking router is down, the route is drawn as straight lines with estimated distances, and the route card says so.
