@@ -1,0 +1,1183 @@
+{
+ "city": {
+  "id": "venice",
+  "name": {
+   "en": "Venice",
+   "es": "Venecia"
+  },
+  "country": "Italy",
+  "center": [
+   45.4371,
+   12.3326
+  ],
+  "radiusKm": 8,
+  "timezone": "Europe/Rome",
+  "detourFactor": 1.4,
+  "triggerRadiusM": 35,
+  "stationId": "station"
+ },
+ "startPoints": [
+  {
+   "id": "san-marco",
+   "name": {
+    "en": "St Mark's Square",
+    "es": "Plaza de San Marcos"
+   },
+   "lat": 45.434,
+   "lng": 12.338
+  },
+  {
+   "id": "station",
+   "name": {
+    "en": "Santa Lucia station",
+    "es": "Estación Santa Lucia"
+   },
+   "lat": 45.44098,
+   "lng": 12.32104
+  },
+  {
+   "id": "rialto",
+   "name": {
+    "en": "Rialto Bridge",
+    "es": "Puente de Rialto"
+   },
+   "lat": 45.43801,
+   "lng": 12.33564
+  },
+  {
+   "id": "piazzale-roma",
+   "name": {
+    "en": "Piazzale Roma (buses)",
+    "es": "Piazzale Roma (autobuses)"
+   },
+   "lat": 45.43778,
+   "lng": 12.31861
+  }
+ ],
+ "pois": [
+  {
+   "id": "piazza-san-marco",
+   "lat": 45.434,
+   "lng": 12.338,
+   "name": {
+    "en": "St Mark's Square",
+    "es": "Plaza de San Marcos"
+   },
+   "interests": [
+    "local",
+    "historic",
+    "architecture"
+   ],
+   "indoor": false,
+   "priority": 3,
+   "wiki": [
+    "en:Piazza San Marco",
+    "es:Plaza de San Marcos",
+    "it:Piazza San Marco"
+   ],
+   "wikidata": "Q217527",
+   "text": {
+    "en": {
+     "short": "You are in St Mark's Square, the heart of Venice for a thousand years. It is the only square in the city called a piazza; every other one is a campo, a field. Look around: the basilica, the bell tower and the long arcades frame what is often called the drawing room of Europe."
+    },
+    "es": {
+     "short": "Estás en la plaza de San Marcos, el corazón de Venecia desde hace mil años. Es la única plaza de la ciudad que se llama piazza; todas las demás son campi, campos. Mira alrededor: la basílica, el campanario y los largos soportales enmarcan lo que suele llamarse el salón de Europa."
+    }
+   }
+  },
+  {
+   "id": "basilica-san-marco",
+   "lat": 45.43444,
+   "lng": 12.33972,
+   "name": {
+    "en": "St Mark's Basilica",
+    "es": "Basílica de San Marcos"
+   },
+   "interests": [
+    "historic",
+    "architecture",
+    "artists"
+   ],
+   "indoor": true,
+   "priority": 3,
+   "wiki": [
+    "en:St Mark's Basilica",
+    "es:Basílica de San Marcos",
+    "it:Basilica di San Marco"
+   ],
+   "wikidata": "Q172988",
+   "text": {
+    "en": {
+     "short": "This is St Mark's Basilica, built in the eleventh century to hold the relics of Saint Mark, brought from Alexandria in the year 828. Its domes and golden mosaics show how closely Venice looked east, to Byzantium. The four bronze horses above the entrance were taken from Constantinople in 1204; the originals are now kept inside."
+    },
+    "es": {
+     "short": "Esta es la basílica de San Marcos, construida en el siglo XI para guardar las reliquias de san Marcos, traídas de Alejandría en el año 828. Sus cúpulas y mosaicos dorados muestran cuánto miraba Venecia hacia Oriente, hacia Bizancio. Los cuatro caballos de bronce sobre la entrada se trajeron de Constantinopla en 1204; los originales se conservan dentro."
+    }
+   }
+  },
+  {
+   "id": "campanile",
+   "lat": 45.43403,
+   "lng": 12.33903,
+   "name": {
+    "en": "St Mark's Campanile",
+    "es": "Campanile de San Marcos"
+   },
+   "interests": [
+    "architecture",
+    "historic"
+   ],
+   "indoor": false,
+   "priority": 2,
+   "wiki": [
+    "en:St Mark's Campanile",
+    "es:Campanile de San Marcos",
+    "it:Campanile di San Marco"
+   ],
+   "wikidata": "Q754194",
+   "text": {
+    "en": {
+     "short": "The bell tower of St Mark's is almost a hundred metres tall and is the highest building in Venice. What you see is a faithful copy: the old tower collapsed in 1902 and was rebuilt by 1912, where it was and as it was. In 1609 Galileo showed his telescope to the Doge from the top."
+    },
+    "es": {
+     "short": "El campanario de San Marcos mide casi cien metros y es el edificio más alto de Venecia. Lo que ves es una copia fiel: la torre antigua se derrumbó en 1902 y se reconstruyó en 1912, donde estaba y como era. En 1609 Galileo mostró su telescopio al dux desde lo alto."
+    }
+   }
+  },
+  {
+   "id": "doges-palace",
+   "lat": 45.43367,
+   "lng": 12.34042,
+   "name": {
+    "en": "Doge's Palace",
+    "es": "Palacio Ducal"
+   },
+   "interests": [
+    "historic",
+    "architecture",
+    "artists"
+   ],
+   "indoor": true,
+   "priority": 3,
+   "wiki": [
+    "en:Doge's Palace",
+    "es:Palacio Ducal de Venecia",
+    "it:Palazzo Ducale (Venezia)"
+   ],
+   "wikidata": "Q189883",
+   "text": {
+    "en": {
+     "short": "This pink and white Gothic building is the Doge's Palace, the seat of the Doge and the government of the Venetian Republic for centuries. Notice how the heavy upper wall rests on two light rows of arches, as if the building were upside down. Inside are vast council halls painted by Tintoretto and Veronese."
+    },
+    "es": {
+     "short": "Este edificio gótico rosa y blanco es el Palacio Ducal, sede del dux y del gobierno de la República de Venecia durante siglos. Fíjate en cómo el pesado muro superior descansa sobre dos ligeras filas de arcos, como si el edificio estuviera al revés. Dentro hay enormes salas de consejo pintadas por Tintoretto y Veronés."
+    }
+   }
+  },
+  {
+   "id": "bridge-of-sighs",
+   "lat": 45.43406,
+   "lng": 12.34086,
+   "name": {
+    "en": "Bridge of Sighs",
+    "es": "Puente de los Suspiros"
+   },
+   "interests": [
+    "historic",
+    "architecture"
+   ],
+   "indoor": false,
+   "priority": 2,
+   "wiki": [
+    "en:Bridge of Sighs",
+    "es:Puente de los Suspiros (Venecia)",
+    "it:Ponte dei Sospiri"
+   ],
+   "wikidata": "Q52517",
+   "text": {
+    "en": {
+     "short": "From the bridge on the waterfront, look up the narrow canal to the covered white bridge. This is the Bridge of Sighs, built around 1600 to link the Doge's Palace with the prisons. The name, made famous by Lord Byron, imagines prisoners sighing at their last view of Venice."
+    },
+    "es": {
+     "short": "Desde el puente del muelle, mira hacia el canal estrecho hasta el puente blanco cubierto. Es el Puente de los Suspiros, construido hacia 1600 para unir el Palacio Ducal con las prisiones. El nombre, que hizo famoso Lord Byron, imagina a los presos suspirando ante su última vista de Venecia."
+    }
+   }
+  },
+  {
+   "id": "museo-correr",
+   "lat": 45.43393,
+   "lng": 12.33713,
+   "name": {
+    "en": "Museo Correr",
+    "es": "Museo Correr"
+   },
+   "interests": [
+    "historic",
+    "artists"
+   ],
+   "indoor": true,
+   "priority": 1,
+   "wiki": [
+    "en:Museo Correr",
+    "es:Museo Correr",
+    "it:Museo Correr"
+   ],
+   "wikidata": "Q1470912",
+   "text": {
+    "en": {
+     "short": "At the far end of the square from the basilica is the Museo Correr, the museum of the city's art and history. It is a good place to understand how the Venetian Republic worked, and a calm indoor stop when the square is crowded or wet."
+    },
+    "es": {
+     "short": "En el extremo de la plaza opuesto a la basílica está el Museo Correr, el museo de arte e historia de la ciudad. Es un buen lugar para entender cómo funcionaba la República de Venecia, y una parada tranquila y cubierta cuando la plaza está llena o llueve."
+    }
+   }
+  },
+  {
+   "id": "giardini-reali",
+   "lat": 45.4328,
+   "lng": 12.3375,
+   "name": {
+    "en": "Royal Gardens",
+    "es": "Jardines Reales"
+   },
+   "interests": [
+    "parks"
+   ],
+   "indoor": false,
+   "priority": 1,
+   "wiki": [
+    "it:Giardini Reali di Venezia"
+   ],
+   "approx": true,
+   "text": {
+    "en": {
+     "short": "Just behind St Mark's Square, facing the lagoon, are the small Royal Gardens, laid out in Napoleon's time. They are one of the few green places near the square, with benches in the shade."
+    },
+    "es": {
+     "short": "Justo detrás de la plaza de San Marcos, frente a la laguna, están los pequeños Jardines Reales, trazados en tiempos de Napoleón. Son uno de los pocos lugares verdes cerca de la plaza, con bancos a la sombra."
+    }
+   }
+  },
+  {
+   "id": "rialto-bridge",
+   "lat": 45.43801,
+   "lng": 12.33564,
+   "name": {
+    "en": "Rialto Bridge",
+    "es": "Puente de Rialto"
+   },
+   "interests": [
+    "historic",
+    "architecture",
+    "local"
+   ],
+   "indoor": false,
+   "priority": 3,
+   "wiki": [
+    "en:Rialto Bridge",
+    "es:Puente de Rialto",
+    "it:Ponte di Rialto"
+   ],
+   "wikidata": "Q52505",
+   "stairs": true,
+   "text": {
+    "en": {
+     "short": "This is the Rialto Bridge, the oldest of the four bridges over the Grand Canal. Earlier wooden bridges stood here; the stone one you are on was finished in 1591 to a design by Antonio da Ponte. Two rows of shops still line it, as they have for centuries."
+    },
+    "es": {
+     "short": "Este es el puente de Rialto, el más antiguo de los cuatro puentes sobre el Gran Canal. Antes hubo aquí puentes de madera; el de piedra que pisas se terminó en 1591 según el diseño de Antonio da Ponte. Dos filas de tiendas siguen ocupándolo, como desde hace siglos."
+    }
+   }
+  },
+  {
+   "id": "san-giacomo-di-rialto",
+   "lat": 45.43847,
+   "lng": 12.33547,
+   "name": {
+    "en": "San Giacomo di Rialto",
+    "es": "San Giacomo di Rialto"
+   },
+   "interests": [
+    "historic"
+   ],
+   "indoor": true,
+   "priority": 1,
+   "wiki": [
+    "en:San Giacomo di Rialto",
+    "es:Iglesia de San Giacomo de Rialto",
+    "it:Chiesa di San Giacomo di Rialto"
+   ],
+   "wikidata": "Q922677",
+   "text": {
+    "en": {
+     "short": "This small church with the big clock is San Giacomo di Rialto. By tradition it is the oldest church in Venice. It stood at the centre of the Rialto, the city's market and banking quarter."
+    },
+    "es": {
+     "short": "Esta pequeña iglesia con el gran reloj es San Giacomo di Rialto. Según la tradición, es la iglesia más antigua de Venecia. Estaba en el centro de Rialto, el barrio de mercados y bancos de la ciudad."
+    }
+   }
+  },
+  {
+   "id": "rialto-market",
+   "lat": 45.4396,
+   "lng": 12.3342,
+   "name": {
+    "en": "Rialto Market",
+    "es": "Mercado de Rialto"
+   },
+   "interests": [
+    "food",
+    "local"
+   ],
+   "indoor": false,
+   "priority": 3,
+   "wiki": [
+    "en:Rialto",
+    "es:Rialto",
+    "it:Rialto (Venezia)"
+   ],
+   "wikidata": "Q1190585",
+   "approx": true,
+   "text": {
+    "en": {
+     "short": "You have reached the Rialto market, where Venetians have bought fish, fruit and vegetables for centuries. Come in the morning to see the fish hall at its busiest. The small bars around it serve cicchetti, the Venetian snacks eaten standing with a glass of wine."
+    },
+    "es": {
+     "short": "Has llegado al mercado de Rialto, donde los venecianos compran pescado, fruta y verdura desde hace siglos. Ven por la mañana para ver la lonja de pescado en plena actividad. Los pequeños bares de alrededor sirven cicchetti, las tapas venecianas que se toman de pie con un vaso de vino."
+    }
+   }
+  },
+  {
+   "id": "ca-doro",
+   "lat": 45.44056,
+   "lng": 12.33389,
+   "name": {
+    "en": "Ca' d'Oro",
+    "es": "Ca' d'Oro"
+   },
+   "interests": [
+    "architecture",
+    "artists"
+   ],
+   "indoor": true,
+   "priority": 2,
+   "wiki": [
+    "en:Ca' d'Oro",
+    "es:Ca' d'Oro",
+    "it:Ca' d'Oro"
+   ],
+   "wikidata": "Q820872",
+   "text": {
+    "en": {
+     "short": "This is the Ca' d'Oro, the golden house, one of the finest Gothic palaces on the Grand Canal. Its lace-like facade was once covered with gold leaf, which gave it its name. Today it houses an art gallery."
+    },
+    "es": {
+     "short": "Esta es la Ca' d'Oro, la casa de oro, uno de los palacios góticos más bellos del Gran Canal. Su fachada, que parece encaje, estuvo cubierta de pan de oro, y de ahí su nombre. Hoy alberga una galería de arte."
+    }
+   }
+  },
+  {
+   "id": "ca-pesaro",
+   "lat": 45.441,
+   "lng": 12.33146,
+   "name": {
+    "en": "Ca' Pesaro",
+    "es": "Ca' Pesaro"
+   },
+   "interests": [
+    "artists",
+    "architecture"
+   ],
+   "indoor": true,
+   "priority": 1,
+   "wiki": [
+    "en:Ca' Pesaro",
+    "es:Ca' Pesaro",
+    "it:Ca' Pesaro"
+   ],
+   "wikidata": "Q756807",
+   "text": {
+    "en": {
+     "short": "This grand Baroque palace on the Grand Canal is Ca' Pesaro, designed by Baldassare Longhena. It is now the city's gallery of modern art, with a museum of oriental art on the top floor."
+    },
+    "es": {
+     "short": "Este gran palacio barroco sobre el Gran Canal es Ca' Pesaro, diseñado por Baldassare Longhena. Hoy es la galería de arte moderno de la ciudad, con un museo de arte oriental en el último piso."
+    }
+   }
+  },
+  {
+   "id": "miracoli",
+   "lat": 45.43943,
+   "lng": 12.3392,
+   "name": {
+    "en": "Santa Maria dei Miracoli",
+    "es": "Santa Maria dei Miracoli"
+   },
+   "interests": [
+    "architecture",
+    "historic"
+   ],
+   "indoor": true,
+   "priority": 1,
+   "wiki": [
+    "en:Santa Maria dei Miracoli, Venice",
+    "es:Iglesia de Santa María de los Milagros (Venecia)",
+    "it:Chiesa di Santa Maria dei Miracoli (Venezia)"
+   ],
+   "wikidata": "Q533680",
+   "text": {
+    "en": {
+     "short": "This small church, covered inside and out in coloured marble, is Santa Maria dei Miracoli. It was built in the 1480s by Pietro Lombardo and is one of the jewels of the early Venetian Renaissance."
+    },
+    "es": {
+     "short": "Esta pequeña iglesia, revestida por dentro y por fuera de mármol de colores, es Santa Maria dei Miracoli. La construyó Pietro Lombardo en la década de 1480 y es una de las joyas del primer Renacimiento veneciano."
+    }
+   }
+  },
+  {
+   "id": "santi-giovanni-e-paolo",
+   "lat": 45.43922,
+   "lng": 12.3424,
+   "name": {
+    "en": "Santi Giovanni e Paolo",
+    "es": "San Juan y San Pablo"
+   },
+   "interests": [
+    "historic",
+    "architecture"
+   ],
+   "indoor": true,
+   "priority": 2,
+   "wiki": [
+    "en:Santi Giovanni e Paolo, Venice",
+    "es:Basílica de San Juan y San Pablo (Venecia)",
+    "it:Basilica dei Santi Giovanni e Paolo (Venezia)"
+   ],
+   "wikidata": "Q155225",
+   "text": {
+    "en": {
+     "short": "This huge brick church is Santi Giovanni e Paolo, which Venetians call San Zanipolo. Twenty-five doges are buried inside. In the square stands the bronze horseman Bartolomeo Colleoni, by Verrocchio, one of the great equestrian statues of the Renaissance."
+    },
+    "es": {
+     "short": "Esta enorme iglesia de ladrillo es Santi Giovanni e Paolo, que los venecianos llaman San Zanipolo. Dentro están enterrados veinticinco dux. En la plaza se alza el jinete de bronce Bartolomeo Colleoni, de Verrocchio, una de las grandes estatuas ecuestres del Renacimiento."
+    }
+   }
+  },
+  {
+   "id": "scuola-san-marco",
+   "lat": 45.43971,
+   "lng": 12.34148,
+   "name": {
+    "en": "Scuola Grande di San Marco",
+    "es": "Escuela Grande de San Marcos"
+   },
+   "interests": [
+    "architecture"
+   ],
+   "indoor": false,
+   "priority": 1,
+   "wiki": [
+    "en:Scuola Grande di San Marco",
+    "es:Escuela Grande de San Marcos",
+    "it:Scuola Grande di San Marco"
+   ],
+   "wikidata": "Q1273362",
+   "text": {
+    "en": {
+     "short": "Next to the church, this marble facade with its painted-looking perspectives belongs to the Scuola Grande di San Marco, once one of the city's great charitable brotherhoods. Today it is the entrance to Venice's hospital."
+    },
+    "es": {
+     "short": "Junto a la iglesia, esta fachada de mármol con perspectivas que parecen pintadas pertenece a la Scuola Grande di San Marco, una de las grandes cofradías benéficas de la ciudad. Hoy es la entrada del hospital de Venecia."
+    }
+   }
+  },
+  {
+   "id": "libreria-acqua-alta",
+   "lat": 45.43787,
+   "lng": 12.34213,
+   "name": {
+    "en": "Libreria Acqua Alta",
+    "es": "Libreria Acqua Alta"
+   },
+   "interests": [
+    "local"
+   ],
+   "indoor": true,
+   "priority": 2,
+   "wiki": [
+    "it:Libreria Acqua Alta"
+   ],
+   "approx": true,
+   "text": {
+    "en": {
+     "short": "This is the Libreria Acqua Alta, the high-water bookshop. To protect its books from flooding, it keeps them in bathtubs, boats and even a full-size gondola. At the back, a staircase made of old books leads up to a view of the canal."
+    },
+    "es": {
+     "short": "Esta es la Libreria Acqua Alta, la librería del agua alta. Para proteger sus libros de las inundaciones los guarda en bañeras, barcas y hasta una góndola de tamaño real. Al fondo, una escalera hecha de libros viejos sube hasta una vista del canal."
+    }
+   }
+  },
+  {
+   "id": "san-zaccaria",
+   "lat": 45.43472,
+   "lng": 12.34333,
+   "name": {
+    "en": "San Zaccaria",
+    "es": "San Zacarías"
+   },
+   "interests": [
+    "historic",
+    "artists"
+   ],
+   "indoor": true,
+   "priority": 1,
+   "wiki": [
+    "en:San Zaccaria, Venice",
+    "es:Iglesia de San Zacarías (Venecia)",
+    "it:Chiesa di San Zaccaria"
+   ],
+   "wikidata": "Q794876",
+   "text": {
+    "en": {
+     "short": "Behind the waterfront is the church of San Zaccaria, with a facade that mixes Gothic and Renaissance. Inside is one of Giovanni Bellini's finest altarpieces, and a crypt that is often flooded."
+    },
+    "es": {
+     "short": "Detrás del muelle está la iglesia de San Zaccaria, con una fachada que mezcla gótico y Renacimiento. Dentro hay uno de los mejores retablos de Giovanni Bellini y una cripta que a menudo está inundada."
+    }
+   }
+  },
+  {
+   "id": "arsenale",
+   "lat": 45.4348,
+   "lng": 12.3498,
+   "name": {
+    "en": "Arsenale Gate",
+    "es": "Puerta del Arsenal"
+   },
+   "interests": [
+    "historic",
+    "architecture",
+    "streetart"
+   ],
+   "indoor": false,
+   "priority": 2,
+   "wiki": [
+    "en:Venetian Arsenal",
+    "es:Arsenal de Venecia",
+    "it:Arsenale di Venezia"
+   ],
+   "wikidata": "Q1262248",
+   "approx": true,
+   "text": {
+    "en": {
+     "short": "These towers and stone lions guard the entrance to the Arsenale, the shipyard of the Venetian Republic. Founded in the twelfth century, it built the fleets that made Venice a sea power, with an organisation often compared to a modern factory. Today parts of it host the Biennale art exhibition."
+    },
+    "es": {
+     "short": "Estas torres y leones de piedra guardan la entrada del Arsenal, el astillero de la República de Venecia. Fundado en el siglo XII, construyó las flotas que hicieron de Venecia una potencia marítima, con una organización que suele compararse con una fábrica moderna. Hoy parte de él acoge la exposición de arte de la Bienal."
+    }
+   }
+  },
+  {
+   "id": "giardini",
+   "lat": 45.42902,
+   "lng": 12.35793,
+   "name": {
+    "en": "Biennale Gardens",
+    "es": "Jardines de la Bienal"
+   },
+   "interests": [
+    "parks",
+    "artists",
+    "streetart"
+   ],
+   "indoor": false,
+   "priority": 2,
+   "wiki": [
+    "en:Giardini della Biennale",
+    "it:Giardini Napoleonici"
+   ],
+   "wikidata": "Q724170",
+   "text": {
+    "en": {
+     "short": "These gardens were created under Napoleon and are the largest green space in historic Venice. Since 1895 they have been home to the Venice Biennale, one of the world's most important art exhibitions, with pavilions built by different countries."
+    },
+    "es": {
+     "short": "Estos jardines se crearon bajo Napoleón y son el mayor espacio verde de la Venecia histórica. Desde 1895 acogen la Bienal de Venecia, una de las exposiciones de arte más importantes del mundo, con pabellones construidos por distintos países."
+    }
+   }
+  },
+  {
+   "id": "la-fenice",
+   "lat": 45.4337,
+   "lng": 12.3339,
+   "name": {
+    "en": "La Fenice",
+    "es": "La Fenice"
+   },
+   "interests": [
+    "artists",
+    "architecture",
+    "historic"
+   ],
+   "indoor": true,
+   "priority": 2,
+   "wiki": [
+    "en:La Fenice",
+    "es:La Fenice",
+    "it:Gran Teatro La Fenice"
+   ],
+   "wikidata": "Q223942",
+   "text": {
+    "en": {
+     "short": "This is La Fenice, the Phoenix, Venice's opera house, opened in 1792. True to its name, it has risen from the ashes more than once, most recently after the fire of 1996. Verdi's Rigoletto and La Traviata were first performed here."
+    },
+    "es": {
+     "short": "Este es La Fenice, el Fénix, el teatro de ópera de Venecia, inaugurado en 1792. Fiel a su nombre, ha renacido de sus cenizas más de una vez, la última tras el incendio de 1996. Aquí se estrenaron Rigoletto y La Traviata, de Verdi."
+    }
+   }
+  },
+  {
+   "id": "bovolo",
+   "lat": 45.43481,
+   "lng": 12.33453,
+   "name": {
+    "en": "Contarini del Bovolo Staircase",
+    "es": "Escalera Contarini del Bovolo"
+   },
+   "interests": [
+    "architecture"
+   ],
+   "indoor": false,
+   "priority": 2,
+   "wiki": [
+    "en:Palazzo Contarini del Bovolo",
+    "es:Palacio Contarini del Bovolo",
+    "it:Palazzo Contarini del Bovolo"
+   ],
+   "wikidata": "Q1585745",
+   "text": {
+    "en": {
+     "short": "Hidden in this small courtyard is the spiral staircase of Palazzo Contarini del Bovolo, built at the end of the fifteenth century. Bovolo means snail in Venetian, after the way the arches wind up the tower."
+    },
+    "es": {
+     "short": "Escondida en este pequeño patio está la escalera de caracol del Palazzo Contarini del Bovolo, construida a finales del siglo XV. Bovolo significa caracol en veneciano, por la forma en que los arcos suben enroscándose por la torre."
+    }
+   }
+  },
+  {
+   "id": "ponte-accademia",
+   "lat": 45.43166,
+   "lng": 12.32899,
+   "name": {
+    "en": "Accademia Bridge",
+    "es": "Puente de la Academia"
+   },
+   "interests": [
+    "architecture",
+    "local"
+   ],
+   "indoor": false,
+   "priority": 2,
+   "wiki": [
+    "en:Ponte dell'Accademia",
+    "es:Puente de la Academia",
+    "it:Ponte dell'Accademia"
+   ],
+   "wikidata": "Q52509",
+   "stairs": true,
+   "text": {
+    "en": {
+     "short": "You are on the Accademia Bridge, one of only four bridges across the Grand Canal. The wooden bridge was put up in the 1930s as a temporary solution and has stayed ever since. Look east for the classic view toward the dome of the Salute."
+    },
+    "es": {
+     "short": "Estás en el puente de la Academia, uno de los cuatro únicos puentes sobre el Gran Canal. El puente de madera se levantó en los años treinta como solución provisional y ahí sigue. Mira al este para la vista clásica hacia la cúpula de la Salute."
+    }
+   }
+  },
+  {
+   "id": "accademia",
+   "lat": 45.43108,
+   "lng": 12.32814,
+   "name": {
+    "en": "Gallerie dell'Accademia",
+    "es": "Galería de la Academia"
+   },
+   "interests": [
+    "artists"
+   ],
+   "indoor": true,
+   "priority": 3,
+   "wiki": [
+    "en:Gallerie dell'Accademia",
+    "es:Galería de la Academia de Venecia",
+    "it:Gallerie dell'Accademia"
+   ],
+   "wikidata": "Q338330",
+   "text": {
+    "en": {
+     "short": "This is the Gallerie dell'Accademia, the great museum of Venetian painting. Its rooms follow the city's art from the Middle Ages to the eighteenth century, with works by Bellini, Giorgione, Titian, Tintoretto and Veronese."
+    },
+    "es": {
+     "short": "Esta es la Galería de la Academia, el gran museo de la pintura veneciana. Sus salas recorren el arte de la ciudad desde la Edad Media hasta el siglo XVIII, con obras de Bellini, Giorgione, Tiziano, Tintoretto y Veronés."
+    }
+   }
+  },
+  {
+   "id": "guggenheim",
+   "lat": 45.43082,
+   "lng": 12.33154,
+   "name": {
+    "en": "Peggy Guggenheim Collection",
+    "es": "Colección Peggy Guggenheim"
+   },
+   "interests": [
+    "artists"
+   ],
+   "indoor": true,
+   "priority": 3,
+   "wiki": [
+    "en:Peggy Guggenheim Collection",
+    "es:Museo Guggenheim de Venecia",
+    "it:Peggy Guggenheim Collection"
+   ],
+   "wikidata": "Q1049033",
+   "text": {
+    "en": {
+     "short": "This low, unfinished palace on the Grand Canal was the home of the American collector Peggy Guggenheim. Her collection of modern art, with Picasso, Pollock, Magritte and many others, is shown in the rooms where she lived. She is buried in the garden."
+    },
+    "es": {
+     "short": "Este palacio bajo e inacabado sobre el Gran Canal fue la casa de la coleccionista estadounidense Peggy Guggenheim. Su colección de arte moderno, con Picasso, Pollock, Magritte y muchos otros, se expone en las salas donde vivió. Está enterrada en el jardín."
+    }
+   }
+  },
+  {
+   "id": "salute",
+   "lat": 45.43057,
+   "lng": 12.33473,
+   "name": {
+    "en": "Santa Maria della Salute",
+    "es": "Santa Maria della Salute"
+   },
+   "interests": [
+    "architecture",
+    "historic"
+   ],
+   "indoor": true,
+   "priority": 3,
+   "wiki": [
+    "en:Santa Maria della Salute",
+    "es:Basílica de Santa Maria della Salute",
+    "it:Basilica di Santa Maria della Salute"
+   ],
+   "wikidata": "Q52531",
+   "text": {
+    "en": {
+     "short": "This great domed church is Santa Maria della Salute, Saint Mary of Health. Venice vowed to build it during the plague of 1630, and Baldassare Longhena spent much of his life on it. Every November the city still crosses the canal on a temporary bridge to give thanks here."
+    },
+    "es": {
+     "short": "Esta gran iglesia con cúpula es Santa Maria della Salute, Santa María de la Salud. Venecia prometió construirla durante la peste de 1630, y Baldassare Longhena le dedicó gran parte de su vida. Cada noviembre la ciudad sigue cruzando el canal por un puente provisional para dar gracias aquí."
+    }
+   }
+  },
+  {
+   "id": "punta-della-dogana",
+   "lat": 45.4308,
+   "lng": 12.33618,
+   "name": {
+    "en": "Punta della Dogana",
+    "es": "Punta della Dogana"
+   },
+   "interests": [
+    "artists",
+    "architecture",
+    "streetart",
+    "local"
+   ],
+   "indoor": false,
+   "priority": 2,
+   "wiki": [
+    "en:Punta della Dogana",
+    "es:Punta della Dogana",
+    "it:Punta della Dogana"
+   ],
+   "wikidata": "Q2931413",
+   "text": {
+    "en": {
+     "short": "You are at the tip where the Grand Canal meets the Giudecca Canal. This was the customs house of the Republic, where ships declared their goods. The building was restored by the architect Tadao Ando and now shows contemporary art. The view across to St Mark's is one of the best in the city."
+    },
+    "es": {
+     "short": "Estás en la punta donde el Gran Canal se une al canal de la Giudecca. Aquí estaba la aduana de la República, donde los barcos declaraban sus mercancías. El edificio fue restaurado por el arquitecto Tadao Ando y hoy muestra arte contemporáneo. La vista hacia San Marcos es de las mejores de la ciudad."
+    }
+   }
+  },
+  {
+   "id": "zattere",
+   "lat": 45.4296,
+   "lng": 12.327,
+   "name": {
+    "en": "Zattere Promenade",
+    "es": "Paseo de las Zattere"
+   },
+   "interests": [
+    "local",
+    "parks",
+    "food"
+   ],
+   "indoor": false,
+   "priority": 2,
+   "wiki": [
+    "it:Zattere"
+   ],
+   "approx": true,
+   "text": {
+    "en": {
+     "short": "This long sunny quay is the Zattere, facing the island of Giudecca. Its name means rafts, after the timber that was once floated here. It is where Venetians come to walk, sit in the sun and eat ice cream."
+    },
+    "es": {
+     "short": "Este largo muelle soleado son las Zattere, frente a la isla de la Giudecca. Su nombre significa balsas, por la madera que antes llegaba flotando hasta aquí. Es donde los venecianos vienen a pasear, sentarse al sol y tomar helado."
+    }
+   }
+  },
+  {
+   "id": "squero-san-trovaso",
+   "lat": 45.4302,
+   "lng": 12.3265,
+   "name": {
+    "en": "San Trovaso Gondola Yard",
+    "es": "Astillero de góndolas de San Trovaso"
+   },
+   "interests": [
+    "local",
+    "historic"
+   ],
+   "indoor": false,
+   "priority": 2,
+   "wiki": [
+    "it:Squero di San Trovaso"
+   ],
+   "approx": true,
+   "text": {
+    "en": {
+     "short": "Across this canal is the squero of San Trovaso, one of the last boatyards where gondolas are still built and repaired by hand. The wooden buildings look like mountain houses because many boatbuilders came from the Dolomites."
+    },
+    "es": {
+     "short": "Al otro lado de este canal está el squero de San Trovaso, uno de los últimos astilleros donde todavía se construyen y reparan góndolas a mano. Los edificios de madera parecen casas de montaña porque muchos carpinteros venían de los Dolomitas."
+    }
+   }
+  },
+  {
+   "id": "san-sebastiano",
+   "lat": 45.432,
+   "lng": 12.32,
+   "name": {
+    "en": "San Sebastiano",
+    "es": "San Sebastián"
+   },
+   "interests": [
+    "artists"
+   ],
+   "indoor": true,
+   "priority": 1,
+   "wiki": [
+    "en:San Sebastiano, Venice",
+    "es:Iglesia de San Sebastián (Venecia)",
+    "it:Chiesa di San Sebastiano (Venezia)"
+   ],
+   "wikidata": "Q588559",
+   "text": {
+    "en": {
+     "short": "This quiet church is San Sebastiano, the church of the painter Paolo Veronese. He decorated its ceilings, walls and organ over many years, and he is buried here."
+    },
+    "es": {
+     "short": "Esta tranquila iglesia es San Sebastiano, la iglesia del pintor Paolo Veronés. Decoró sus techos, paredes y órgano durante muchos años, y está enterrado aquí."
+    }
+   }
+  },
+  {
+   "id": "ca-rezzonico",
+   "lat": 45.43409,
+   "lng": 12.32435,
+   "name": {
+    "en": "Ca' Rezzonico",
+    "es": "Ca' Rezzonico"
+   },
+   "interests": [
+    "artists",
+    "architecture"
+   ],
+   "indoor": true,
+   "priority": 2,
+   "wiki": [
+    "en:Ca' Rezzonico",
+    "es:Ca' Rezzonico",
+    "it:Ca' Rezzonico"
+   ],
+   "wikidata": "Q1052171",
+   "text": {
+    "en": {
+     "short": "This palace on the Grand Canal is Ca' Rezzonico, the museum of eighteenth-century Venice. Its ballroom, frescoes and furniture show how the city's richest families lived in the last century of the Republic. The poet Robert Browning died here in 1889."
+    },
+    "es": {
+     "short": "Este palacio sobre el Gran Canal es Ca' Rezzonico, el museo de la Venecia del siglo XVIII. Su salón de baile, sus frescos y sus muebles muestran cómo vivían las familias más ricas en el último siglo de la República. El poeta Robert Browning murió aquí en 1889."
+    }
+   }
+  },
+  {
+   "id": "campo-santa-margherita",
+   "lat": 45.4344,
+   "lng": 12.32382,
+   "name": {
+    "en": "Campo Santa Margherita",
+    "es": "Campo Santa Margherita"
+   },
+   "interests": [
+    "local",
+    "food",
+    "streetart"
+   ],
+   "indoor": false,
+   "priority": 2,
+   "wiki": [
+    "en:Campo Santa Margherita",
+    "it:Campo Santa Margherita"
+   ],
+   "wikidata": "Q2248913",
+   "text": {
+    "en": {
+     "short": "This wide square is Campo Santa Margherita, the living room of the university quarter. In the morning there are market stalls; in the evening students fill the bars for a spritz. It is one of the best places to see everyday Venetian life."
+    },
+    "es": {
+     "short": "Esta amplia plaza es el Campo Santa Margherita, el salón del barrio universitario. Por la mañana hay puestos de mercado; por la tarde los estudiantes llenan los bares para tomar un spritz. Es uno de los mejores lugares para ver la vida veneciana de cada día."
+    }
+   }
+  },
+  {
+   "id": "frari",
+   "lat": 45.43693,
+   "lng": 12.32649,
+   "name": {
+    "en": "Frari Basilica",
+    "es": "Basílica dei Frari"
+   },
+   "interests": [
+    "historic",
+    "artists",
+    "architecture"
+   ],
+   "indoor": true,
+   "priority": 3,
+   "wiki": [
+    "en:Santa Maria Gloriosa dei Frari",
+    "es:Basílica de Santa María dei Frari",
+    "it:Basilica di Santa Maria Gloriosa dei Frari"
+   ],
+   "wikidata": "Q224961",
+   "text": {
+    "en": {
+     "short": "This great brick church is Santa Maria Gloriosa dei Frari, built by the Franciscans. Above the high altar is Titian's Assumption of the Virgin, one of the masterpieces of Venetian painting. Titian himself is buried here, as is the sculptor Canova's heart."
+    },
+    "es": {
+     "short": "Esta gran iglesia de ladrillo es Santa Maria Gloriosa dei Frari, construida por los franciscanos. Sobre el altar mayor está la Asunción de la Virgen de Tiziano, una de las obras maestras de la pintura veneciana. El propio Tiziano está enterrado aquí, igual que el corazón del escultor Canova."
+    }
+   }
+  },
+  {
+   "id": "san-rocco",
+   "lat": 45.43657,
+   "lng": 12.32531,
+   "name": {
+    "en": "Scuola Grande di San Rocco",
+    "es": "Escuela Grande de San Roque"
+   },
+   "interests": [
+    "artists"
+   ],
+   "indoor": true,
+   "priority": 2,
+   "wiki": [
+    "en:Scuola Grande di San Rocco",
+    "es:Escuela Grande de San Roque",
+    "it:Scuola Grande di San Rocco"
+   ],
+   "wikidata": "Q1270723",
+   "text": {
+    "en": {
+     "short": "This is the Scuola Grande di San Rocco, the meeting house of a charitable brotherhood. Tintoretto spent more than twenty years covering its walls and ceilings with paintings, and they are still exactly where he put them."
+    },
+    "es": {
+     "short": "Esta es la Scuola Grande di San Rocco, la casa de una cofradía benéfica. Tintoretto pasó más de veinte años cubriendo sus paredes y techos de pinturas, y siguen exactamente donde él las puso."
+    }
+   }
+  },
+  {
+   "id": "campo-san-polo",
+   "lat": 45.4375,
+   "lng": 12.3299,
+   "name": {
+    "en": "Campo San Polo",
+    "es": "Campo San Polo"
+   },
+   "interests": [
+    "local",
+    "parks"
+   ],
+   "indoor": false,
+   "priority": 1,
+   "wiki": [
+    "en:Campo San Polo",
+    "es:Campo San Polo",
+    "it:Campo San Polo"
+   ],
+   "wikidata": "Q744776",
+   "text": {
+    "en": {
+     "short": "This is Campo San Polo, the largest square in Venice after St Mark's. For centuries it was used for fairs, parades and even bullfights. Today children play football here and, in summer, there is open-air cinema."
+    },
+    "es": {
+     "short": "Este es el Campo San Polo, la plaza más grande de Venecia después de San Marcos. Durante siglos se usó para ferias, desfiles e incluso corridas de toros. Hoy los niños juegan al fútbol y, en verano, hay cine al aire libre."
+    }
+   }
+  },
+  {
+   "id": "ghetto",
+   "lat": 45.44528,
+   "lng": 12.32639,
+   "name": {
+    "en": "Jewish Ghetto",
+    "es": "Gueto judío"
+   },
+   "interests": [
+    "historic",
+    "local"
+   ],
+   "indoor": false,
+   "priority": 3,
+   "wiki": [
+    "en:Venetian Ghetto",
+    "es:Gueto de Venecia",
+    "it:Ghetto di Venezia"
+   ],
+   "wikidata": "Q649030",
+   "text": {
+    "en": {
+     "short": "You are in the Campo del Ghetto Nuovo. In 1516 the Republic ordered the city's Jews to live on this small island, locked in at night. It was the first ghetto, and the word itself comes from here. Because space was so short, the houses grew unusually tall. Five synagogues are hidden on the upper floors."
+    },
+    "es": {
+     "short": "Estás en el Campo del Ghetto Nuovo. En 1516 la República ordenó a los judíos de la ciudad vivir en esta pequeña isla, cerrada por la noche. Fue el primer gueto, y la propia palabra viene de aquí. Como faltaba espacio, las casas crecieron hasta una altura poco habitual. En los pisos altos se esconden cinco sinagogas."
+    }
+   }
+  },
+  {
+   "id": "misericordia",
+   "lat": 45.4447,
+   "lng": 12.331,
+   "name": {
+    "en": "Fondamenta della Misericordia",
+    "es": "Fondamenta della Misericordia"
+   },
+   "interests": [
+    "food",
+    "local"
+   ],
+   "indoor": false,
+   "priority": 2,
+   "wiki": [],
+   "approx": true,
+   "text": {
+    "en": {
+     "short": "This long canal-side quay in Cannaregio is lined with bacari, the small Venetian bars. Do as the locals do: order an ombra, a small glass of wine, and a few cicchetti, and eat them standing by the water."
+    },
+    "es": {
+     "short": "Este largo muelle junto al canal, en Cannaregio, está lleno de bacari, los pequeños bares venecianos. Haz como los vecinos: pide una ombra, un vasito de vino, y unos cicchetti, y tómalos de pie junto al agua."
+    }
+   }
+  },
+  {
+   "id": "madonna-dellorto",
+   "lat": 45.44634,
+   "lng": 12.33247,
+   "name": {
+    "en": "Madonna dell'Orto",
+    "es": "Madonna dell'Orto"
+   },
+   "interests": [
+    "artists",
+    "historic"
+   ],
+   "indoor": true,
+   "priority": 1,
+   "wiki": [
+    "en:Madonna dell'Orto",
+    "es:Iglesia de la Madonna dell'Orto",
+    "it:Chiesa della Madonna dell'Orto"
+   ],
+   "wikidata": "Q861436",
+   "text": {
+    "en": {
+     "short": "This Gothic brick church in quiet Cannaregio is the Madonna dell'Orto. It was the parish church of the painter Tintoretto, who lived nearby. Several of his large paintings hang inside, and he is buried here."
+    },
+    "es": {
+     "short": "Esta iglesia gótica de ladrillo, en el tranquilo Cannaregio, es la Madonna dell'Orto. Fue la parroquia del pintor Tintoretto, que vivía cerca. Dentro cuelgan varias de sus grandes pinturas, y aquí está enterrado."
+    }
+   }
+  },
+  {
+   "id": "ponte-scalzi",
+   "lat": 45.44104,
+   "lng": 12.32278,
+   "name": {
+    "en": "Scalzi Bridge",
+    "es": "Puente de los Descalzos"
+   },
+   "interests": [
+    "architecture"
+   ],
+   "indoor": false,
+   "priority": 1,
+   "wiki": [
+    "en:Ponte degli Scalzi",
+    "es:Puente de los Descalzos",
+    "it:Ponte degli Scalzi"
+   ],
+   "wikidata": "Q52508",
+   "stairs": true,
+   "text": {
+    "en": {
+     "short": "This stone arch next to the railway station is the Scalzi Bridge, built in the 1930s. For many visitors arriving by train, it is the first bridge they cross and their first view down the Grand Canal."
+    },
+    "es": {
+     "short": "Este arco de piedra junto a la estación de tren es el puente de los Descalzos, construido en los años treinta. Para muchos visitantes que llegan en tren es el primer puente que cruzan y su primera vista del Gran Canal."
+    }
+   }
+  },
+  {
+   "id": "ponte-costituzione",
+   "lat": 45.43889,
+   "lng": 12.31944,
+   "name": {
+    "en": "Constitution Bridge",
+    "es": "Puente de la Constitución"
+   },
+   "interests": [
+    "architecture"
+   ],
+   "indoor": false,
+   "priority": 1,
+   "wiki": [
+    "en:Ponte della Costituzione",
+    "es:Puente de la Constitución (Venecia)",
+    "it:Ponte della Costituzione"
+   ],
+   "wikidata": "Q52501",
+   "stairs": true,
+   "text": {
+    "en": {
+     "short": "This sweeping bridge of steel and glass is the Constitution Bridge, designed by Santiago Calatrava and opened in 2008. It is the newest of the four bridges over the Grand Canal, and it has been argued about ever since, not least for its slippery glass steps."
+    },
+    "es": {
+     "short": "Este puente curvo de acero y vidrio es el puente de la Constitución, diseñado por Santiago Calatrava e inaugurado en 2008. Es el más nuevo de los cuatro puentes sobre el Gran Canal, y no ha dejado de dar que hablar, entre otras cosas por sus resbaladizos escalones de vidrio."
+    }
+   }
+  }
+ ]
+}
