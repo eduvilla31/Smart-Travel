@@ -7,6 +7,7 @@ import { angleDiff, bearingDeg, haversineM } from '../lib/geo';
 import { getNarration } from '../lib/narration';
 import { safeUrl } from '../lib/safe';
 import * as speech from '../lib/speech';
+import { currentHeading } from '../lib/compass';
 
 interface Props {
   pois: Poi[];
@@ -26,30 +27,6 @@ interface Result {
   alternatives: Poi[];
   /** true when the answer is a location-only guess (no server). */
   guess?: boolean;
-}
-
-/** Live compass heading. iOS asks for permission, which must happen inside a tap. */
-function useCompass() {
-  const heading = useRef<number | null>(null);
-  const listening = useRef(false);
-  const start = async () => {
-    if (listening.current) return;
-    const DOE = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> } | undefined;
-    try {
-      if (DOE?.requestPermission && (await DOE.requestPermission()) !== 'granted') return;
-    } catch {
-      return;
-    }
-    const onOrient = (e: DeviceOrientationEvent) => {
-      const ios = (e as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
-      if (typeof ios === 'number') heading.current = ios;
-      else if (e.absolute && typeof e.alpha === 'number') heading.current = (360 - e.alpha) % 360;
-    };
-    window.addEventListener('deviceorientationabsolute', onOrient as EventListener);
-    window.addEventListener('deviceorientation', onOrient);
-    listening.current = true;
-  };
-  return { heading, start };
 }
 
 /** Shrink the photo to at most 1024 px on its long side, JPEG. Returns base64 without the data: prefix. */
@@ -92,7 +69,6 @@ export function guessFromPosition(cands: Candidate[], heading: number | null): P
 export default function PhotoIdentify({ pois, position, onClose }: Props) {
   const { t, lang } = useI18n();
   const city = useCity();
-  const compass = useCompass();
   const fileRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<'idle' | 'working' | 'result' | 'error'>('idle');
   const [preview, setPreview] = useState<string | null>(null);
@@ -102,11 +78,6 @@ export default function PhotoIdentify({ pois, position, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => () => speech.stop(), []);
-
-  const pick = () => {
-    compass.start(); // inside the tap, so iOS can ask for compass permission
-    fileRef.current?.click();
-  };
 
   const showPoi = async (poi: Poi) => {
     setPhase('working');
@@ -133,7 +104,7 @@ export default function PhotoIdentify({ pois, position, onClose }: Props) {
         return;
       }
       const cands = nearestCandidates(pois, pos);
-      const heading = compass.heading.current;
+      const heading = currentHeading();
       let r: Result | null = null;
       if (hasApi()) {
         try {
@@ -207,7 +178,6 @@ export default function PhotoIdentify({ pois, position, onClose }: Props) {
           <button className="icon-btn" type="button" onClick={onClose} aria-label={t('close')}>✕</button>
         </div>
 
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => onFile(e.target.files?.[0])} />
 
         {preview && <img className="photo-preview" src={preview} alt="" />}
         {phase === 'idle' && <p className="muted">{t('identifyHint')}</p>}
@@ -247,9 +217,20 @@ export default function PhotoIdentify({ pois, position, onClose }: Props) {
           </div>
         )}
 
-        <button className="btn btn-primary btn-block" type="button" onClick={pick} disabled={phase === 'working'}>
+        {/* A real file input inside a label: the phone opens the camera itself, which iPhone
+            allows far more reliably than a script-triggered click. */}
+        <label className={`btn btn-primary btn-block photo-btn${phase === 'working' ? ' disabled' : ''}`}>
           📷 {t('takePhoto')}
-        </button>
+          <input
+            ref={fileRef}
+            className="visually-hidden"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            disabled={phase === 'working'}
+            onChange={(e) => onFile(e.target.files?.[0])}
+          />
+        </label>
       </div>
     </div>
   );

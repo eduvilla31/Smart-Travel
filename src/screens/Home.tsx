@@ -5,6 +5,7 @@ import ContextCard from '../components/ContextCard';
 import PhotoIdentify from '../components/PhotoIdentify';
 import { apiHealth, getApi, setApi, type ModelId } from '../lib/api';
 import * as speech from '../lib/speech';
+import { startCompass } from '../lib/compass';
 import { isAllowedServer } from '../lib/safe';
 import { distanceToCityKm, inCity } from '../lib/places';
 import CityPicker from '../components/CityPicker';
@@ -202,7 +203,14 @@ export default function Home(props: Props) {
         {props.planError && <p className="status-line" role="alert">⚠️ {props.planError}</p>}
       </form>
 
-      <button className="btn btn-block identify-btn" type="button" onClick={() => setPhoto(true)}>
+      <button
+        className="btn btn-block identify-btn"
+        type="button"
+        onClick={() => {
+          startCompass(); // its own tap, so the camera tap stays free
+          setPhoto(true);
+        }}
+      >
         📷 {t('identifyTitle')}
       </button>
       {photo && (
