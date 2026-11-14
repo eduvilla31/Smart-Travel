@@ -30,15 +30,47 @@ interface Result {
 }
 
 /** Shrink the photo to at most 1024 px on its long side, JPEG. Returns base64 without the data: prefix. */
+/** Decode a photo two ways: the fast one, and the classic <img> one older Safari needs. */
+async function decode(file: File): Promise<{ img: CanvasImageSource; w: number; h: number; done: () => void }> {
+  try {
+    const bmp = await createImageBitmap(file);
+    return { img: bmp, w: bmp.width, h: bmp.height, done: () => bmp.close() };
+  } catch {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.decoding = 'async';
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('unreadable'));
+      img.src = url;
+    }).catch((e) => {
+      URL.revokeObjectURL(url);
+      throw e;
+    });
+    return { img, w: img.naturalWidth, h: img.naturalHeight, done: () => URL.revokeObjectURL(url) };
+  }
+}
+
+export class PhotoUnreadable extends Error {}
+
 async function shrink(file: File): Promise<{ data: string; preview: string }> {
-  const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bmp.width * scale);
-  canvas.height = Math.round(bmp.height * scale);
-  canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
-  const url = canvas.toDataURL('image/jpeg', 0.8);
-  return { data: url.split(',')[1], preview: url };
+  let pic;
+  try {
+    pic = await decode(file);
+  } catch {
+    throw new PhotoUnreadable(file.type || 'unknown type');
+  }
+  try {
+    const scale = Math.min(1, 1024 / Math.max(pic.w, pic.h));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(pic.w * scale));
+    canvas.height = Math.max(1, Math.round(pic.h * scale));
+    canvas.getContext('2d')!.drawImage(pic.img, 0, 0, canvas.width, canvas.height);
+    const url = canvas.toDataURL('image/jpeg', 0.8);
+    return { data: url.split(',')[1], preview: url };
+  } finally {
+    pic.done();
+  }
 }
 
 function currentPosition(): Promise<(LatLng & { accuracy: number }) | null> {
@@ -152,8 +184,9 @@ export default function PhotoIdentify({ pois, position, onClose }: Props) {
       setPhase('result');
       if (r.status === 'identified') speech.speak(`${r.name}. ${r.short}`, r.lang);
       else if (!r.guess) speech.speak(r.short, r.lang);
-    } catch {
-      setError(t('serverErr'));
+    } catch (e) {
+      // Say what actually went wrong (no more misleading "server" message).
+      setError(e instanceof PhotoUnreadable ? `${t('photoUnreadable')} (${e.message})` : `${t('photoFailed')} (${e instanceof Error ? e.message : 'error'})`);
       setPhase('error');
     } finally {
       if (fileRef.current) fileRef.current.value = '';
@@ -231,6 +264,21 @@ export default function PhotoIdentify({ pois, position, onClose }: Props) {
             onChange={(e) => onFile(e.target.files?.[0])}
           />
         </label>
+        {/* Fallback when the camera can't be opened (some in-app browsers block it). */}
+        <label className={`btn btn-block photo-btn${phase === 'working' ? ' disabled' : ''}`}>
+          🖼️ {t('choosePhoto')}
+          <input
+            className="visually-hidden"
+            type="file"
+            accept="image/*"
+            disabled={phase === 'working'}
+            onChange={(e) => {
+              onFile(e.target.files?.[0]);
+              e.target.value = '';
+            }}
+          />
+        </label>
+        <p className="muted small center">{t('photoHint')}</p>
       </div>
     </div>
   );
