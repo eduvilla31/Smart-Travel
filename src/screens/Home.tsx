@@ -9,7 +9,8 @@ import { startCompass } from '../lib/compass';
 import { isAllowedServer } from '../lib/safe';
 import { distanceToCityKm, inCity } from '../lib/places';
 import CityPicker from '../components/CityPicker';
-import type { CityData } from '../types';
+import PlaceSelect from '../components/PlaceSelect';
+import type { CityData, StartPoint } from '../types';
 import { useCity } from '../city';
 import { describeCode, type WeatherAnalysis } from '../lib/weather';
 import type { ContextState, DetectState, GpsState, PlanStatus } from '../App';
@@ -33,6 +34,8 @@ interface Props {
   onDiscard: () => void;
   onWalkAgain: (r: PlannedRoute, cityId?: string, city?: CityData) => void;
   onChooseCity: (id: string) => void;
+  points: StartPoint[];
+  gpsInCity: boolean;
   onChooseSearched: (c: CityData) => void;
   onUseHere: () => void;
   detect: DetectState;
@@ -59,7 +62,6 @@ export default function Home(props: Props) {
     if (next.length) setPrefs({ interests: next });
   };
 
-  const gpsUsable = gps.status === 'ok' && inCity(city, gps.pos);
 
   return (
     <main className="page">
@@ -154,33 +156,38 @@ export default function Home(props: Props) {
           </div>
         </fieldset>
 
-        <label className="field">
-          <span className="field-label">{t('startFrom')}</span>
-          <select value={prefs.startId} onChange={(e) => setPrefs({ startId: e.target.value })}>
-            <option value="gps">
-              {t('myLocation')}
-              {gps.status === 'ok' && !gpsUsable ? ` → ${loc(city.startPoints[0].name, lang)}` : ''}
-            </option>
-            {city.startPoints.map((s) => (
-              <option key={s.id} value={s.id}>{loc(s.name, lang)}</option>
-            ))}
-          </select>
-        </label>
+        <PlaceSelect
+          label={t('startFrom')}
+          // Not in this city: show the place that will really be used instead of "my location".
+          value={prefs.startId === 'gps' && !props.gpsInCity ? props.points[0]?.id ?? 'gps' : prefs.startId}
+          onChange={(v) => setPrefs({ startId: v })}
+          extra={[
+            {
+              value: 'gps',
+              label: props.gpsInCity ? t('myLocationHere') : t('myLocationAway', { city: cityName }),
+              disabled: !props.gpsInCity,
+            },
+          ]}
+          points={props.points}
+          typed={prefs.startTyped}
+          onTyped={(p) => setPrefs({ startTyped: p })}
+        />
+
+        <PlaceSelect
+          label={t('endAt')}
+          value={prefs.end === 'station' ? prefs.endId ?? city.city.stationId : prefs.end}
+          onChange={(v) => (v === 'loop' || v === 'oneway' ? setPrefs({ end: v }) : setPrefs({ end: 'station', endId: v }))}
+          extra={[
+            { value: 'loop', label: t('endLoop') },
+            { value: 'oneway', label: t('endOneway') },
+          ]}
+          points={props.points}
+          typed={prefs.endTyped}
+          onTyped={(p) => setPrefs({ endTyped: p })}
+        />
 
         <details className="more">
           <summary>{t('options')}</summary>
-          <label className="field">
-            <span className="field-label">{t('endAt')}</span>
-            <select value={prefs.end} onChange={(e) => setPrefs({ end: e.target.value as Preferences['end'] })}>
-              <option value="loop">{t('endLoop')}</option>
-              <option value="oneway">{t('endOneway')}</option>
-{!city.city.noStation && (
-                <option value="station">
-                  {t('endStation')} ({loc((city.startPoints.find((st) => st.id === city.city.stationId) ?? city.startPoints[0]).name, lang)})
-                </option>
-              )}
-            </select>
-          </label>
           <label className="field">
             <span className="field-label">{t('pace')}</span>
             <select value={prefs.pace} onChange={(e) => setPrefs({ pace: e.target.value as Preferences['pace'] })}>

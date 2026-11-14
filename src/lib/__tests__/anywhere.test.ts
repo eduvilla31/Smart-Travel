@@ -122,3 +122,37 @@ describe('safe links and servers', () => {
     expect(isAllowedServer('http://localhost:8787')).toBe(true);
   });
 });
+
+describe('start and end places inside the chosen city', () => {
+  it('searches only within the city and suggests its main stations', async () => {
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', async (url: string) => {
+      urls.push(String(url));
+      return Response.json([
+        { lat: '35.6812', lon: '139.7671', name: 'Tokyo Station', display_name: 'Tokyo Station, Chiyoda, Tokyo, Japan', addresstype: 'railway', address: { country: 'Japan', country_code: 'jp' } },
+        { lat: '35.6812', lon: '139.7671', name: 'Tokyo Station', display_name: 'Tokyo Station (duplicate)', addresstype: 'railway', address: {} },
+        { lat: '35.6896', lon: '139.7006', name: 'Shinjuku Station', display_name: 'Shinjuku Station, Tokyo, Japan', addresstype: 'railway', address: {} },
+      ]);
+    });
+    const { searchInCity, cityHubs } = await import('../geocode');
+    const tokyo = makeCity({ lat: 35.6812, lng: 139.7671, name: 'Tokyo', label: 'Tokyo, Japan', country: 'Japan', countryCode: 'jp', tooBig: false, radiusKm: 40 });
+    const r = await searchInCity("I'm at Senso-ji", tokyo, 'en');
+    expect(r[0].name).toBe('Tokyo Station');
+    expect(urls[0]).toContain('bounded=1');
+    expect(urls[0]).toContain('viewbox=');
+    expect(urls[0]).toContain('q=Senso-ji');
+    // Main stations: Wikipedia articles near the centre, longest (biggest hubs) first.
+    vi.stubGlobal('fetch', async (url: string) =>
+      String(url).includes('wikipedia')
+        ? Response.json({ query: { pages: {
+            1: { title: 'Nakanobu Station', description: 'Railway station in Tokyo, Japan', length: 4000, coordinates: [{ lat: 35.6, lon: 139.71 }] },
+            2: { title: 'Tokyo Station', description: 'Railway station in Chiyoda, Tokyo, Japan', length: 68533, coordinates: [{ lat: 35.6812, lon: 139.7671 }] },
+            3: { title: 'Akihabara Station', description: 'Railway station in Tokyo, Japan', length: 27975, coordinates: [{ lat: 35.6984, lon: 139.7731 }] },
+            4: { title: 'Sensō-ji', description: 'Buddhist temple in Tokyo', length: 30000, coordinates: [{ lat: 35.7148, lon: 139.7967 }] },
+          } } })
+        : Response.json([]),
+    );
+    const hubs = await cityHubs(tokyo, 'en');
+    expect(hubs.map((h) => h.name.en)).toEqual(['Tokyo Station', 'Akihabara Station', 'Nakanobu Station']);
+  });
+});

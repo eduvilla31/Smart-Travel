@@ -1,4 +1,4 @@
-import type { CityData, Lang, LatLng } from '../types';
+import type { CityData, Lang, LatLng, StartPoint } from '../types';
 import { haversineM } from './geo';
 import { fetchJson, load, save } from './storage';
 
@@ -81,6 +81,57 @@ export async function reverseCity(p: LatLng, lang: Lang): Promise<PlaceResult | 
 }
 
 export const isCustomCity = (id: string) => id.startsWith('custom:');
+
+/** Search only inside a city (a box around its centre), e.g. a hotel or square to start from. */
+export async function searchInCity(query: string, city: CityData, lang: Lang, limit = 6): Promise<PlaceResult[]> {
+  const q = cleanQuery(query);
+  if (q.length < 2) return [];
+  const [lat, lng] = city.city.center;
+  const km = Math.min(city.city.radiusKm, 20);
+  const dLat = km / 111;
+  const dLng = km / (111 * Math.cos((lat * Math.PI) / 180));
+  const box = [lng - dLng, lat + dLat, lng + dLng, lat - dLat].map((n) => n.toFixed(4)).join(',');
+  const url =
+    `${NOMINATIM}/search?format=jsonv2&limit=${limit}&addressdetails=1&accept-language=${lang}` +
+    `&viewbox=${box}&bounded=1&q=${encodeURIComponent(q)}`;
+  return (await fetchJson<NominatimResult[]>(url, {}, 12000)).map(toResult);
+}
+
+const STATION = /\b(railway|train|metro|subway|underground) station\b|\bstation (in|on|of)\b|^gare\b|\bhauptbahnhof\b/i;
+
+/**
+ * Good start and end points in a searched city: its main stations. Wikipedia's
+ * nearby articles ranked by length put the big hubs first (Tokyo Station before
+ * small local stops); a plain "<city> station" search is the backup.
+ */
+export async function cityHubs(city: CityData, lang: Lang): Promise<StartPoint[]> {
+  const [lat, lng] = city.city.center;
+  const out: StartPoint[] = [];
+  const add = (name: string, plat: number, plng: number) => {
+    if (out.length >= 3 || out.some((o) => o.name.en.toLowerCase() === name.toLowerCase() || haversineM(o, { lat: plat, lng: plng }) < 150)) return;
+    out.push({ id: `hub-${plat.toFixed(4)},${plng.toFixed(4)}`, name: { en: name, es: name }, lat: plat, lng: plng });
+  };
+  try {
+    const url =
+      'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch' +
+      `&ggscoord=${lat.toFixed(5)}%7C${lng.toFixed(5)}&ggsradius=10000&ggslimit=500&prop=description%7Cinfo%7Ccoordinates&colimit=max`;
+    const res = await fetchJson<{ query?: { pages?: Record<string, { title: string; description?: string; length?: number; coordinates?: { lat: number; lon: number }[] }> } }>(url, {}, 15000);
+    Object.values(res.query?.pages ?? {})
+      .filter((p) => p.coordinates?.[0] && STATION.test(`${p.title} ${p.description ?? ''}`))
+      .sort((a, b) => (b.length ?? 0) - (a.length ?? 0))
+      .forEach((p) => add(p.title, p.coordinates![0].lat, p.coordinates![0].lon));
+  } catch {
+    /* fall back to the plain search */
+  }
+  if (out.length < 3) {
+    try {
+      for (const r of await searchInCity(`${city.city.name.en} station`, city, lang, 3)) add(r.name, r.lat, r.lng);
+    } catch {
+      /* no suggestions beyond the centre */
+    }
+  }
+  return out;
+}
 
 /** A city with no curated places: everything comes from OpenStreetMap and Wikipedia. */
 export function makeCity(r: PlaceResult, names?: Partial<Record<Lang, string>>): CityData {

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CityContext } from './city';
 import { LangContext, translate, loc, type StringKey } from './i18n';
-import type { ActiveTour, CityData, LatLng, PlannedRoute, Poi, Preferences, SavedTour } from './types';
+import type { ActiveTour, CityData, LatLng, PlannedRoute, Poi, Preferences, SavedTour, StartPoint } from './types';
 import { load, save } from './lib/storage';
 import { cityAt, cityById, inCity, isCurated, loadPlaces } from './lib/places';
-import { currentCity, forgetSearchHistory, isCustomCity, makeCity, reverseCity, setCurrentCity } from './lib/geocode';
+import { cityHubs, currentCity, forgetSearchHistory, isCustomCity, makeCity, reverseCity, setCurrentCity } from './lib/geocode';
 import { setDetourFactor } from './lib/geo';
 import { hasApi } from './lib/api';
 import { fetchCityContext, type ContextNote } from './lib/context';
@@ -29,6 +29,14 @@ const DEFAULT_PREFS: Preferences = {
 };
 
 type Screen = 'home' | 'routes' | 'tour' | 'summary';
+
+/** Start and end reset to places in the newly chosen city. */
+const freshPlaces = (startId: string): Partial<Preferences> => ({
+  startId,
+  startTyped: undefined,
+  endId: undefined,
+  endTyped: undefined,
+});
 export type GpsState = { status: 'pending' } | { status: 'ok'; pos: LatLng & { accuracy: number } } | { status: 'error' };
 export type PlanStatus = null | 'places' | 'routes';
 export type DetectState = 'idle' | 'detecting' | 'failed';
@@ -103,7 +111,7 @@ export default function App() {
       if (gps.status !== 'ok') return;
       const curated = cityAt(gps.pos);
       if (curated) {
-        if (curated.city.id !== prefs.cityId) setPrefs({ cityId: curated.city.id, startId: 'gps' });
+        if (curated.city.id !== prefs.cityId) setPrefs({ cityId: curated.city.id, ...freshPlaces('gps') });
         return;
       }
       if (!manual && inCity(city, gps.pos)) return; // already set to the city we're in
@@ -113,7 +121,7 @@ export default function App() {
         if (!found) throw new Error('not found');
         const c = makeCity(found);
         setCurrentCity(c);
-        setPrefs({ cityId: c.city.id, startId: 'gps' });
+        setPrefs({ cityId: c.city.id, ...freshPlaces('gps') });
         setDetect('idle');
       } catch {
         setDetect('failed');
@@ -128,7 +136,7 @@ export default function App() {
 
   const chooseCity = (id: string) => {
     pickedCity.current = true;
-    if (id !== prefs.cityId) setPrefs({ cityId: id, startId: isCurated(id) ? 'gps' : 'centre' });
+    if (id !== prefs.cityId) setPrefs({ cityId: id, ...freshPlaces(isCurated(id) ? 'gps' : 'centre') });
   };
   const chooseSearched = (c: CityData) => {
     // Typed "Basel" or "Venice"? Use the built-in city with its hand-picked places.
@@ -183,13 +191,36 @@ export default function App() {
   const plannedMinutes = prefs.limitBy === 'duration' ? prefs.durationMin : Math.round((prefs.distanceKm / 4.5) * 60 + 30);
   const weather = useMemo(() => (forecast ? analyseForecast(forecast, plannedMinutes) : null), [forecast, plannedMinutes]);
 
+  // Suggested start/end places: the city's own list, plus main stations for searched cities.
+  const [hubs, setHubs] = useState<StartPoint[]>([]);
+  useEffect(() => {
+    setHubs([]);
+    if (!isCustomCity(city.city.id)) return;
+    let cancelled = false;
+    cityHubs(city, lang)
+      .then((h) => !cancelled && setHubs(h))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [city, lang]);
+  const points = useMemo(() => [...city.startPoints, ...hubs], [city, hubs]);
+  const gpsInCity = gps.status === 'ok' && inCity(city, gps.pos);
+
+  const placeOf = (sp: StartPoint) => ({ lat: sp.lat, lng: sp.lng, name: loc(sp.name, lang) });
   const startPlace = useMemo(() => {
-    const sp = city.startPoints.find((s) => s.id === prefs.startId);
-    if (sp) return { lat: sp.lat, lng: sp.lng, name: loc(sp.name, lang) };
-    if (gps.status === 'ok' && inCity(city, gps.pos)) return { ...gps.pos, name: t('myLocation') };
-    const m = city.startPoints[0];
-    return { lat: m.lat, lng: m.lng, name: loc(m.name, lang) };
-  }, [city, prefs.startId, gps, lang, t]);
+    if (prefs.startId === 'typed' && prefs.startTyped) return prefs.startTyped;
+    if (prefs.startId === 'gps' && gps.status === 'ok' && gpsInCity) return { ...gps.pos, name: t('myLocation') };
+    const sp = points.find((s) => s.id === prefs.startId) ?? points[0];
+    return placeOf(sp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [points, prefs.startId, prefs.startTyped, gps, gpsInCity, lang, t]);
+  const endPlace = useMemo(() => {
+    if (prefs.endId === 'typed' && prefs.endTyped) return prefs.endTyped;
+    const sp = points.find((s) => s.id === prefs.endId) ?? points.find((s) => s.id === city.city.stationId) ?? points[0];
+    return placeOf(sp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [points, prefs.endId, prefs.endTyped, city, lang]);
 
   const plan = async () => {
     setPlanStatus('places');
@@ -219,13 +250,11 @@ export default function App() {
           ? context.notes.filter((n) => n.effect === 'blocks').flatMap((n) => n.affectsStopIds.map((id) => ({ id, title: n.title })))
           : [];
       setPlanStatus('routes');
-      const sbb = city.startPoints.find((s) => s.id === city.city.stationId) ?? city.startPoints[0];
       const rs = await planRoutes({
         pois: places.pois,
-        // No known station in a searched city: "end at the station" becomes a loop.
-        prefs: city.city.noStation && prefs.end === 'station' ? { ...prefs, end: 'loop' } : prefs,
+        prefs,
         start: startPlace,
-        station: { lat: sbb.lat, lng: sbb.lng, name: loc(sbb.name, lang) },
+        station: endPlace, // used when the walk should end at a chosen place
         weather: w,
         ignoreWeather,
         blocked,
@@ -293,6 +322,8 @@ export default function App() {
           activeTour={activeTour}
           onResume={() => activeTour && startTour(activeTour.route, activeTour, activeTour.cityId, activeTour.city)}
           onChooseCity={chooseCity}
+          points={points}
+          gpsInCity={gpsInCity}
           onChooseSearched={chooseSearched}
           onUseHere={useHere}
           detect={detect}
