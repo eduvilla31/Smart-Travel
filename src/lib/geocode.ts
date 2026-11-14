@@ -1,6 +1,6 @@
 import type { CityData, Lang, LatLng } from '../types';
 import { haversineM } from './geo';
-import { fetchJson, load, loadCached, save, saveCached } from './storage';
+import { fetchJson, load, save } from './storage';
 
 /**
  * Find any city in the world with OpenStreetMap's Nominatim (free, no key).
@@ -64,29 +64,20 @@ function toResult(r: NominatimResult): PlaceResult {
 export async function searchPlaces(query: string, lang: Lang): Promise<PlaceResult[]> {
   const q = cleanQuery(query);
   if (q.length < 2) return [];
-  const key = `geo:v1:${lang}:${q.toLowerCase()}`;
-  const hit = loadCached<PlaceResult[]>(key, 7 * 86400 * 1000);
-  if (hit) return hit;
+  // Not cached: what you type is never stored on the phone.
   const url = `${NOMINATIM}/search?format=jsonv2&limit=6&addressdetails=1&accept-language=${lang}&q=${encodeURIComponent(q)}`;
-  const res = (await fetchJson<NominatimResult[]>(url, {}, 12000)).map(toResult);
-  saveCached(key, res);
-  return res;
+  return (await fetchJson<NominatimResult[]>(url, {}, 12000)).map(toResult);
 }
 
 /** Which town or city is this position in? */
 export async function reverseCity(p: LatLng, lang: Lang): Promise<PlaceResult | null> {
-  const key = `rev:v1:${lang}:${p.lat.toFixed(2)},${p.lng.toFixed(2)}`;
-  const hit = loadCached<PlaceResult | null>(key, 86400 * 1000);
-  if (hit) return hit;
   // Rounded to ~1 km: enough to name the city, without sending the exact position.
   const url = `${NOMINATIM}/reverse?format=jsonv2&zoom=10&addressdetails=1&accept-language=${lang}&lat=${p.lat.toFixed(2)}&lon=${p.lng.toFixed(2)}`;
   const r = await fetchJson<NominatimResult & { error?: string }>(url, {}, 12000);
   if (r.error) return null;
   const res = toResult(r);
   // Centre the city on its place point if Nominatim gave a boundary; otherwise on the user.
-  const out = { ...res, tooBig: false, lat: res.lat || p.lat, lng: res.lng || p.lng };
-  saveCached(key, out);
-  return out;
+  return { ...res, tooBig: false, lat: res.lat || p.lat, lng: res.lng || p.lng };
 }
 
 export const isCustomCity = (id: string) => id.startsWith('custom:');
@@ -113,15 +104,25 @@ export function makeCity(r: PlaceResult, names?: Partial<Record<Lang, string>>):
   };
 }
 
-/** The last few cities the user searched for, newest first. */
-export function recentCities(): CityData[] {
-  return load<CityData[]>('recentCities', []);
+/**
+ * Only the city in use right now is kept, so the app opens where you left it.
+ * No list of past searches is stored.
+ */
+export function currentCity(id: string): CityData | undefined {
+  const c = load<CityData | null>('currentCity', null);
+  return c && c.city.id === id ? c : undefined;
 }
 
-export function rememberCity(c: CityData) {
-  save('recentCities', [c, ...recentCities().filter((x) => x.city.id !== c.city.id)].slice(0, 5));
+export function setCurrentCity(c: CityData) {
+  save('currentCity', c);
 }
 
-export function findRecent(id: string): CityData | undefined {
-  return recentCities().find((c) => c.city.id === id);
+/** Remove searched cities and cached searches that older versions kept. */
+export function forgetSearchHistory() {
+  try {
+    localStorage.removeItem('recentCities');
+    for (const k of Object.keys(localStorage)) if (k.startsWith('geo:') || k.startsWith('rev:')) localStorage.removeItem(k);
+  } catch {
+    /* ignore */
+  }
 }

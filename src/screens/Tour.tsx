@@ -101,7 +101,15 @@ export default function Tour({ route, radiusM, places, resume, onProgress, onExi
 
   // Save progress so a reload or a dropped connection can resume the tour.
   useEffect(() => {
-    if (started) onProgress({ cityId: city.city.id, route, status, startedAt: startedAt.current, savedAt: Date.now() });
+    if (started)
+      onProgress({
+        cityId: city.city.id,
+        city: city.city.id.startsWith('custom:') ? city : undefined,
+        route,
+        status,
+        startedAt: startedAt.current,
+        savedAt: Date.now(),
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started, status, route]);
 

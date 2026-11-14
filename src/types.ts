@@ -119,11 +119,15 @@ export interface SavedTour {
   minutes: number;
   /** Kept so the tour can be walked again. */
   route?: PlannedRoute;
+  /** The city, for tours in a searched city (Basel and Venice are built in). */
+  city?: CityData;
 }
 
 /** A tour in progress, saved so a reload or signal loss doesn't lose it. */
 export interface ActiveTour {
   cityId: string;
+  /** The city, for tours in a searched city. */
+  city?: CityData;
   route: PlannedRoute;
   status: Record<string, 'visited' | 'skipped'>;
   startedAt: number;
