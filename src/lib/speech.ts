@@ -14,22 +14,76 @@ function setSpeaking(v: boolean) {
   listeners.forEach((l) => l(v));
 }
 
-function pickVoice(lang: Lang): SpeechSynthesisVoice | undefined {
+// Apple's joke and retro voices: never pick these automatically.
+const NOVELTY = /^(albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|ralph|kathy|princess|deranged|hysterical|pipe organ)\b/i;
+// Apple's newer character voices: usable, but flatter than Premium/Enhanced ones.
+const CHARACTER = /^(eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley)\b/i;
+
+/** Higher is more natural-sounding. Exported for tests. */
+export function voiceScore(v: Pick<SpeechSynthesisVoice, 'name' | 'lang' | 'localService' | 'voiceURI'>, lang: Lang): number {
+  const id = `${v.name} ${v.voiceURI}`;
+  const vlang = v.lang.replace('_', '-');
+  if (!vlang.toLowerCase().startsWith(lang)) return -1000;
+  let s = 0;
+  if (/premium/i.test(id)) s += 100; // iOS / macOS downloadable neural voices
+  else if (/enhanced|mejorad/i.test(id)) s += 80;
+  if (/natural|neural|online/i.test(id)) s += 70; // Edge / Windows "Online (Natural)" voices
+  if (/^google\b/i.test(v.name)) s += 50; // Chrome / Android network voices
+  if (/siri/i.test(id)) s += 60;
+  if (NOVELTY.test(v.name)) s -= 200;
+  if (CHARACTER.test(v.name)) s -= 30;
+  if (/compact/i.test(id)) s -= 20;
+  // Prefer the user's own variant (en-GB vs en-US, es-ES vs es-MX), then the default one.
+  const own = (typeof navigator !== 'undefined' ? navigator.language : '').replace('_', '-');
+  if (own && vlang.toLowerCase() === own.toLowerCase()) s += 15;
+  else if (vlang === VOICE_LANG[lang]) s += 10;
+  if (v.localService) s += 5; // keeps working without signal
+  return s;
+}
+
+/** Voices for a language, most natural first. */
+export function listVoices(lang: Lang): SpeechSynthesisVoice[] {
   const voices = synth?.getVoices() ?? [];
-  const want = VOICE_LANG[lang];
-  return (
-    voices.find((v) => v.lang === want && v.localService) ??
-    voices.find((v) => v.lang.replace('_', '-') === want) ??
-    voices.find((v) => v.lang.startsWith(lang) && v.localService) ??
-    voices.find((v) => v.lang.startsWith(lang))
-  );
+  return voices
+    .filter((v) => voiceScore(v, lang) > -1000)
+    .sort((a, b) => voiceScore(b, lang) - voiceScore(a, lang));
+}
+
+const PREF_KEY = 'voice';
+function preferred(): Partial<Record<Lang, string>> {
+  try {
+    return JSON.parse(localStorage.getItem(PREF_KEY) ?? '{}');
+  } catch {
+    return {};
+  }
+}
+/** Remember the user's voice for a language ('' = automatic). */
+export function setPreferredVoice(lang: Lang, voiceURI: string) {
+  try {
+    localStorage.setItem(PREF_KEY, JSON.stringify({ ...preferred(), [lang]: voiceURI }));
+  } catch {
+    /* ignore */
+  }
+}
+export const preferredVoice = (lang: Lang) => preferred()[lang] ?? '';
+
+function pickVoice(lang: Lang): SpeechSynthesisVoice | undefined {
+  const list = listVoices(lang);
+  const want = preferredVoice(lang);
+  return (want && list.find((v) => v.voiceURI === want)) || list[0];
 }
 
 // Voices load asynchronously in some browsers.
-if (synth && 'onvoiceschanged' in synth) synth.onvoiceschanged = () => undefined;
+const voiceListeners = new Set<() => void>();
+if (synth && 'onvoiceschanged' in synth) synth.onvoiceschanged = () => voiceListeners.forEach((l) => l());
+/** Some browsers load voices late: get told when the list changes. */
+export function onVoicesChanged(fn: () => void) {
+  voiceListeners.add(fn);
+  return () => voiceListeners.delete(fn);
+}
 
 /** Some engines stop long utterances after ~15 s, so speak sentence-sized chunks. */
-export function chunkText(text: string, max = 220): string[] {
+export function chunkText(text: string, max = 280): string[] {
   const parts = text.match(/[^.!?…]+[.!?…]+["'»)\]]*\s*|[^.!?…]+$/g) ?? [text];
   const out: string[] = [];
   let buf = '';
@@ -63,7 +117,9 @@ export function speak(text: string, lang: Lang): Promise<boolean> {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = voice?.lang ?? VOICE_LANG[lang];
       if (voice) u.voice = voice;
-      u.rate = 0.98;
+      // Premium/neural voices sound best at their natural speed; basic ones a touch slower.
+      u.rate = voice && voiceScore(voice, lang) >= 50 ? 1 : 0.95;
+      u.pitch = 1;
       // Some engines never fire onend: move on after a generous estimate.
       let moved = false;
       const go = () => {

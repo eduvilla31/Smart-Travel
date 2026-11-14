@@ -51,6 +51,20 @@ async function resolveTitle(poi: Poi, lang: Lang): Promise<{ lang: Lang; title: 
       /* try next */
     }
   }
+  // Still nothing: ask Wikidata which Wikipedias cover this place (OpenStreetMap often
+  // only links the local-language article, e.g. Japanese in Japan).
+  if (poi.wikidata && /^Q\d+$/.test(poi.wikidata)) {
+    try {
+      const d = await fetchJson<{ entities?: Record<string, { sitelinks?: Record<string, { title: string }> }> }>(
+        `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&origin=*&props=sitelinks&sitefilter=${lang}wiki|enwiki&ids=${poi.wikidata}`,
+      );
+      const links = d.entities?.[poi.wikidata]?.sitelinks ?? {};
+      if (links[`${lang}wiki`]) return { lang, title: links[`${lang}wiki`].title };
+      if (links.enwiki) return { lang: 'en', title: links.enwiki.title };
+    } catch {
+      /* fall through */
+    }
+  }
   // No article in the requested language: fall back to English, then any.
   const other = poi.wiki.find((w) => w.startsWith('en:')) ?? poi.wiki.find((w) => /^(en|es):/.test(w));
   if (other) return { lang: other.slice(0, 2) as Lang, title: other.slice(3) };
@@ -129,7 +143,7 @@ function seedNarration(poi: Poi, lang: Lang, label: string): Narration | null {
   if (!t) return null;
   const textLang: Lang = poi.text?.[lang] ? lang : 'en';
   // A Spanish entry without a long text borrows nothing: the long version stays empty.
-  return { short: t.short, long: t.long, lang: textLang, sourceLabel: label, sourceUrl: poi.osmUrl };
+  return { short: t.short, long: t.long, lang: textLang, sourceLabel: poi.source === 'wiki' ? 'Wikipedia (EN)' : label, sourceUrl: poi.osmUrl };
 }
 
 /**

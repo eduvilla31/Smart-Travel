@@ -12,6 +12,7 @@ const withSource = (c: unknown): CityData => {
 /** Supported cities. To add one, drop a seed file in src/data and list it here. */
 export const CITIES: CityData[] = [withSource(baselSeed), withSource(veniceSeed)];
 export const cityById = (id: string): CityData => CITIES.find((c) => c.city.id === id) ?? CITIES[0];
+export const isCurated = (id: string) => CITIES.some((c) => c.city.id === id);
 
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 const DAY = 24 * 3600 * 1000;
@@ -177,6 +178,77 @@ async function enrichWithWikidata(pois: Poi[]): Promise<void> {
   }
 }
 
+/** Words in a Wikipedia title or short description, mapped to interests. */
+const WIKI_RULES: [RegExp, Interest[], boolean][] = [
+  [/\b(museum|gallery|museo|galería)\b/i, ['artists'], true],
+  [/\b(cathedral|church|basilica|chapel|mosque|synagogue|abbey|monastery|catedral|iglesia)\b/i, ['historic', 'architecture'], true],
+  // Temple and shrine grounds are mostly outdoors: not counted as shelter from rain.
+  [/\b(temple|shrine|pagoda|-ji|-dera|jinja|taisha|wat|stupa)\b|\b\w+-(ji|in|dera)\b/i, ['historic', 'architecture'], false],
+  [/\b(castle|palace|fort|fortress|citadel|castillo|palacio)\b/i, ['historic', 'architecture'], false],
+  [/\b(monument|memorial|statue|tomb|ruins|archaeological|gate|historic)\b/i, ['historic'], false],
+  [/\b(bridge|tower|skyscraper|building|theatre|theater|opera|hall)\b/i, ['architecture'], false],
+  [/\b(park|garden|gardens|botanical|zoo|viewpoint|hill|beach|river|lake|parque|jardín)\b/i, ['parks'], false],
+  [/\b(market|food|street food|restaurant|mercado)\b/i, ['food', 'local'], false],
+  [/\b(square|plaza|district|quarter|street|alley|neighbou?rhood|geisha)\b/i, ['local'], false],
+  [/\b(mural|graffiti|street art)\b/i, ['streetart'], false],
+];
+/** Not worth a stop on a walk. */
+const WIKI_SKIP = /\b(station|railway|metro|subway|airport|school|university|college|hospital|company|corporation|hotel|ward of|municipality|prefecture|incident|period|timeline|battle|election|android|robot|band|album|film|novel|television|stadium)\b/i;
+
+export function classifyWiki(title: string, description: string): { interests: Interest[]; indoor: boolean } | null {
+  const text = `${title} — ${description}`;
+  if (WIKI_SKIP.test(description || title)) return null;
+  const s = new Set<Interest>();
+  let indoor = false;
+  for (const [re, interests, inside] of WIKI_RULES)
+    if (re.test(text)) {
+      interests.forEach((i) => s.add(i));
+      indoor ||= inside;
+    }
+  return s.size ? { interests: [...s], indoor } : null;
+}
+
+interface WikiPage {
+  pageid: number;
+  title: string;
+  description?: string;
+  length?: number;
+  coordinates?: { lat: number; lon: number }[];
+  pageprops?: { wikibase_item?: string };
+}
+
+/** Backup place source: Wikipedia articles with coordinates near the start point. */
+async function wikipediaNearby(center: LatLng, radiusM: number): Promise<Poi[]> {
+  const url =
+    'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch' +
+    `&ggscoord=${center.lat.toFixed(5)}%7C${center.lng.toFixed(5)}&ggsradius=${Math.min(10000, Math.round(radiusM))}&ggslimit=150` +
+    '&prop=description%7Cinfo%7Cpageprops%7Ccoordinates&ppprop=wikibase_item&colimit=max';
+  const res = await fetchJson<{ query?: { pages?: Record<string, WikiPage> } }>(url, {}, 15000);
+  const out: Poi[] = [];
+  for (const p of Object.values(res.query?.pages ?? {})) {
+    const c = p.coordinates?.[0];
+    const kind = classifyWiki(p.title, p.description ?? '');
+    if (!c || !kind) continue;
+    out.push({
+      id: `wiki-${p.pageid}`,
+      lat: c.lat,
+      lng: c.lon,
+      name: { en: p.title, es: p.title },
+      interests: kind.interests,
+      indoor: kind.indoor,
+      priority: 1,
+      wiki: [`en:${p.title}`],
+      wikidata: p.pageprops?.wikibase_item,
+      articleLength: p.length,
+      source: 'wiki',
+      osmUrl: `https://en.wikipedia.org/wiki/${encodeURIComponent(p.title.replace(/ /g, '_'))}`,
+      // Spoken if the article itself can't be loaded on the walk.
+      text: p.description ? { en: { short: `${p.title}: ${p.description}.` } } : undefined,
+    });
+  }
+  return out;
+}
+
 export interface PlacesResult { pois: Poi[]; live: boolean }
 
 /**
@@ -207,7 +279,22 @@ export async function loadPlaces(city: CityData, center: LatLng, radiusM: number
       /* try next mirror */
     }
   }
-  if (!live) return { pois: seedNearby, live: false };
+  if (!live) {
+    // A searched city has no curated list: fall back to Wikipedia's nearby articles.
+    if (!city.pois.length) {
+      try {
+        const wiki = await wikipediaNearby(center, r);
+        if (wiki.length) {
+          const ranked = wiki.sort((a, b) => importance(b) - importance(a)).slice(0, 90);
+          saveCached(key, ranked);
+          return { pois: ranked, live: true };
+        }
+      } catch {
+        /* nothing more to try */
+      }
+    }
+    return { pois: seedNearby, live: false };
+  }
 
   // Unnamed-in-Wikidata OSM objects are mostly minor; keep the best of them only.
   const merged = mergePlaces(seedNearby, osm);
@@ -228,5 +315,6 @@ export function importance(p: Poi): number {
   if (p.wikidata) s += 1;
   if (p.wiki.length) s += 1;
   if (p.sitelinks) s += Math.min(4, Math.log2(1 + p.sitelinks));
+  if (p.articleLength) s += Math.min(4, Math.max(0, Math.log2(p.articleLength / 2000)));
   return s;
 }

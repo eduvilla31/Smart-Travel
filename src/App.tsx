@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CityContext } from './city';
 import { LangContext, translate, loc, type StringKey } from './i18n';
-import type { ActiveTour, LatLng, PlannedRoute, Poi, Preferences, SavedTour } from './types';
+import type { ActiveTour, CityData, LatLng, PlannedRoute, Poi, Preferences, SavedTour } from './types';
 import { load, save } from './lib/storage';
-import { cityAt, cityById, inCity, loadPlaces } from './lib/places';
+import { cityAt, cityById, inCity, isCurated, loadPlaces } from './lib/places';
+import { findRecent, isCustomCity, makeCity, rememberCity, reverseCity } from './lib/geocode';
 import { setDetourFactor } from './lib/geo';
 import { hasApi } from './lib/api';
 import { fetchCityContext, type ContextNote } from './lib/context';
@@ -30,6 +31,7 @@ const DEFAULT_PREFS: Preferences = {
 type Screen = 'home' | 'routes' | 'tour' | 'summary';
 export type GpsState = { status: 'pending' } | { status: 'ok'; pos: LatLng & { accuracy: number } } | { status: 'error' };
 export type PlanStatus = null | 'places' | 'routes';
+export type DetectState = 'idle' | 'detecting' | 'failed';
 export type ContextState = { status: 'off' | 'loading' | 'error' } | { status: 'ok'; notes: ContextNote[] };
 
 const ACTIVE_TTL = 12 * 3600 * 1000;
@@ -52,7 +54,12 @@ export default function App() {
   const [selected, setSelected] = useState(0);
   const [result, setResult] = useState<TourResult | null>(null);
   const [savedTours, setSavedTours] = useState<SavedTour[]>(() => load('savedTours', []));
-  const city = useMemo(() => cityById(prefs.cityId), [prefs.cityId]);
+  // Curated cities (Basel, Venice) or any city the user searched for or is standing in.
+  const city = useMemo(
+    () => (isCustomCity(prefs.cityId) ? findRecent(prefs.cityId) ?? cityById('basel') : cityById(prefs.cityId)),
+    [prefs.cityId],
+  );
+  const [detect, setDetect] = useState<DetectState>('idle');
   const [places, setPlaces] = useState<Poi[]>(city.pois);
   const pickedCity = useRef(false); // true once the user chose a city by hand
   const [context, setContext] = useState<ContextState>({ status: hasApi() ? 'loading' : 'off' });
@@ -89,17 +96,47 @@ export default function App() {
     );
   }, []);
 
-  // Standing in a supported city? Switch to it, unless the user picked one by hand.
+  // Use the city you are standing in, unless you picked one by hand:
+  // a curated city if you are in one, otherwise whatever city OpenStreetMap says this is.
+  const detectHere = useCallback(
+    async (manual: boolean) => {
+      if (gps.status !== 'ok') return;
+      const curated = cityAt(gps.pos);
+      if (curated) {
+        if (curated.city.id !== prefs.cityId) setPrefs({ cityId: curated.city.id, startId: 'gps' });
+        return;
+      }
+      if (!manual && inCity(city, gps.pos)) return; // already set to the city we're in
+      setDetect('detecting');
+      try {
+        const found = await reverseCity(gps.pos, lang);
+        if (!found) throw new Error('not found');
+        const c = makeCity(found);
+        rememberCity(c);
+        setPrefs({ cityId: c.city.id, startId: 'gps' });
+        setDetect('idle');
+      } catch {
+        setDetect('failed');
+      }
+    },
+    [gps, prefs.cityId, city, lang, setPrefs],
+  );
   useEffect(() => {
-    if (gps.status !== 'ok' || pickedCity.current) return;
-    const here = cityAt(gps.pos);
-    if (here && here.city.id !== prefs.cityId) setPrefs({ cityId: here.city.id, startId: 'gps' });
+    if (!pickedCity.current) detectHere(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gps]);
 
   const chooseCity = (id: string) => {
     pickedCity.current = true;
-    if (id !== prefs.cityId) setPrefs({ cityId: id, startId: 'gps' });
+    if (id !== prefs.cityId) setPrefs({ cityId: id, startId: isCurated(id) ? 'gps' : 'centre' });
+  };
+  const chooseSearched = (c: CityData) => {
+    rememberCity(c);
+    chooseCity(c.city.id);
+  };
+  const useHere = () => {
+    pickedCity.current = true;
+    detectHere(true);
   };
 
   useEffect(() => {
@@ -113,7 +150,7 @@ export default function App() {
     setForecast(null);
     setForecastError(false);
     const [lat, lng] = city.city.center;
-    fetchForecast(lat, lng, city.city.timezone)
+    fetchForecast(lat, lng, city.city.timezone) // "auto" for searched cities
       .then((f) => !cancelled && setForecast(f))
       .catch(() => !cancelled && setForecastError(true));
     return () => {
@@ -126,13 +163,17 @@ export default function App() {
     if (!hasApi()) return setContext({ status: 'off' });
     let cancelled = false;
     setContext({ status: 'loading' });
-    fetchCityContext(city, lang)
+    fetchCityContext(city, lang, cityTz)
       .then((notes) => !cancelled && setContext({ status: 'ok', notes }))
       .catch(() => !cancelled && setContext({ status: 'error' }));
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang, contextKey, city]);
+
+  const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const cityTz = city.city.timezone === 'auto' ? forecast?.timezone ?? deviceTz : city.city.timezone;
 
   const plannedMinutes = prefs.limitBy === 'duration' ? prefs.durationMin : Math.round((prefs.distanceKm / 4.5) * 60 + 30);
   const weather = useMemo(() => (forecast ? analyseForecast(forecast, plannedMinutes) : null), [forecast, plannedMinutes]);
@@ -176,7 +217,8 @@ export default function App() {
       const sbb = city.startPoints.find((s) => s.id === city.city.stationId) ?? city.startPoints[0];
       const rs = await planRoutes({
         pois: places.pois,
-        prefs,
+        // No known station in a searched city: "end at the station" becomes a loop.
+        prefs: city.city.noStation && prefs.end === 'station' ? { ...prefs, end: 'loop' } : prefs,
         start: startPlace,
         station: { lat: sbb.lat, lng: sbb.lng, name: loc(sbb.name, lang) },
         weather: w,
@@ -244,6 +286,9 @@ export default function App() {
           activeTour={activeTour}
           onResume={() => activeTour && startTour(activeTour.route, activeTour, activeTour.cityId)}
           onChooseCity={chooseCity}
+          onChooseSearched={chooseSearched}
+          onUseHere={useHere}
+          detect={detect}
           planError={planError}
           onDiscard={clearActive}
           onWalkAgain={(r, cityId) => startTour(r, null, cityId)}

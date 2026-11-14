@@ -24,9 +24,9 @@ export function cityDate(timezone: string): string {
 }
 
 /** Today's strikes, closures and events (server-side web search). Cached for 3 hours. */
-export async function fetchCityContext(city: CityData, lang: Lang): Promise<ContextNote[]> {
+export async function fetchCityContext(city: CityData, lang: Lang, timezone: string): Promise<ContextNote[]> {
   if (!hasApi()) return [];
-  const date = cityDate(city.city.timezone);
+  const date = cityDate(timezone);
   const key = `context:v2:${city.city.id}:${date}:${lang}`;
   const hit = loadCached<ContextNote[]>(key, 3 * 3600 * 1000);
   if (hit) return hit;

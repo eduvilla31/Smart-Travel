@@ -16,6 +16,7 @@ import { describeCode, type WeatherAnalysis } from './weather';
 export const DWELL_MIN = 4; // minutes spent at each stop
 export const MAX_STOPS = 12;
 const MIN_FILL = 6; // below this, non-matching places may fill the route
+const ANCHORS = 3; // top sights reserved before filling by value
 
 export type Weights = Partial<Record<Interest, number>>;
 type Place = LatLng & { name: string };
@@ -102,17 +103,35 @@ export function selectStops(input: SelectInput): Poi[] {
     .sort((a, b) => b.score - a.score);
 
   let stops: Poi[] = [];
-  const tryAdd = (p: Poi) => {
-    if (stops.length >= MAX_STOPS || stops.includes(p)) return;
-    // Two stops 30 m apart would trigger together: skip near-duplicates.
-    if (stops.some((s) => haversineM(s, p) < 45)) return;
-    const ins = bestInsertion(start, stops, p, end);
-    const km = pathKm(start, stops, end) + ins.delta;
-    if (km > maxKm || minutesFor(km, stops.length + 1, kmh) > budgetMin) return;
-    stops.splice(ins.idx, 0, p);
+  // Greedy by value: how interesting a place is per minute it adds (walking + visiting).
+  // The power above 1 keeps famous sights in, without letting one far-away landmark eat the walk.
+  const fill = (candidates: typeof pool) => {
+    while (stops.length < MAX_STOPS) {
+      let best: { p: Poi; idx: number; value: number } | null = null;
+      const baseKm = pathKm(start, stops, end);
+      for (const c of candidates) {
+        if (stops.includes(c.p)) continue;
+        // Two stops 30 m apart would trigger together: skip near-duplicates.
+        if (stops.some((s) => haversineM(s, c.p) < 45)) continue;
+        const ins = bestInsertion(start, stops, c.p, end);
+        const km = baseKm + ins.delta;
+        if (km > maxKm || minutesFor(km, stops.length + 1, kmh) > budgetMin) continue;
+        const value = c.score ** 1.6 / ((ins.delta / kmh) * 60 + DWELL_MIN);
+        if (!best || value > best.value) best = { p: c.p, idx: ins.idx, value };
+      }
+      if (!best) return;
+      stops.splice(best.idx, 0, best.p);
+    }
   };
-  for (const c of pool) if (c.match > 0) tryAdd(c.p);
-  if (stops.length < MIN_FILL) for (const c of pool) if (c.match === 0) tryAdd(c.p);
+  // Anchors first: the top sights for these interests, if each fits within half the walk.
+  for (const c of pool.filter((x) => x.match > 0).slice(0, ANCHORS)) {
+    if (stops.some((s) => haversineM(s, c.p) < 45)) continue;
+    const ins = bestInsertion(start, stops, c.p, end);
+    const km = pathKm(start, stops, end) + ins.delta;
+    if (km <= maxKm / 2 && minutesFor(km, stops.length + 1, kmh) <= budgetMin / 2) stops.splice(ins.idx, 0, c.p);
+  }
+  fill(pool.filter((c) => c.match > 0));
+  if (stops.length < MIN_FILL) fill(pool);
   stops = twoOpt(start, stops, end);
   return stops;
 }
@@ -164,8 +183,18 @@ async function buildOne(
   for (let tries = 0; tries < 3 && stops.length > 3; tries++) {
     const min = minutesFor(walk.distanceKm, stops.length, sel.kmh);
     if (walk.distanceKm <= sel.maxKm * 1.08 && min <= sel.budgetMin * 1.08) break;
-    // drop the least interesting stop and re-route
-    const worst = stops.reduce((a, b) => (scorePoi(b, sel) < scorePoi(a, sel) ? b : a));
+    // Drop the stop that costs the most walking for what it offers, then re-route.
+    const pts = [sel.start, ...stops, ...(endPlace ? [endPlace] : [])];
+    const saving = (i: number) => {
+      const prev = pts[i];
+      const next = pts[i + 2];
+      const here = pts[i + 1];
+      return next ? walkKm(prev, here) + walkKm(here, next) - walkKm(prev, next) : walkKm(prev, here);
+    };
+    const worst = stops.reduce((a, b, i) => {
+      const ia = stops.indexOf(a);
+      return saving(i) / scorePoi(b, sel) > saving(ia) / scorePoi(a, sel) ? b : a;
+    });
     stops = stops.filter((s) => s !== worst);
     walk = await walkingPath([sel.start, ...stops, ...(endPlace ? [endPlace] : [])]);
   }
