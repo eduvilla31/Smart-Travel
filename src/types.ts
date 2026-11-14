@@ -66,7 +66,11 @@ export interface CityData {
   pois: Poi[];
 }
 
+/** loop = back to start, oneway = wherever it ends, station = a chosen place (endId). */
 export type EndMode = 'loop' | 'oneway' | 'station';
+
+/** A place the user typed for the start or end. */
+export interface PlaceRef extends LatLng { name: string }
 export type Pace = 'slow' | 'normal' | 'fast';
 export const PACE_KMH: Record<Pace, number> = { slow: 3.5, normal: 4.5, fast: 5.5 };
 
@@ -77,8 +81,12 @@ export interface Preferences {
   durationMin: number;
   distanceKm: number;
   interests: Interest[];
-  startId: string; // 'gps' or a StartPoint id
+  startId: string; // 'gps', 'typed', or a StartPoint id
+  startTyped?: PlaceRef;
   end: EndMode;
+  /** With end = 'station': a StartPoint id or 'typed'. */
+  endId?: string;
+  endTyped?: PlaceRef;
   pace: Pace;
   avoidStairs: boolean;
 }
