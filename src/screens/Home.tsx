@@ -5,6 +5,7 @@ import ContextCard from '../components/ContextCard';
 import PhotoIdentify from '../components/PhotoIdentify';
 import { apiHealth, getApi, setApi, type ModelId } from '../lib/api';
 import * as speech from '../lib/speech';
+import { isAllowedServer } from '../lib/safe';
 import { distanceToCityKm, inCity } from '../lib/places';
 import CityPicker from '../components/CityPicker';
 import type { CityData } from '../types';
@@ -306,8 +307,20 @@ function ServerSettings({ onChanged }: { onChanged: () => void }) {
     check();
   }, []);
 
+  const [problem, setProblem] = useState<string | null>(null);
   const commit = () => {
-    setApi({ url: url.trim(), code: code.trim(), key: key.trim() });
+    const u = url.trim();
+    const k = key.trim();
+    if (u && !isAllowedServer(u)) return setProblem(t('serverNotAllowed'));
+    if (k && !/^sk-ant-[\w-]+$/.test(k)) return setProblem(t('keyLooksWrong'));
+    setProblem(null);
+    setApi({ url: u, code: code.trim(), key: k });
+    check();
+    onChanged();
+  };
+  const removeKey = () => {
+    setKey('');
+    setApi({ key: '' });
     check();
     onChanged();
   };
@@ -322,6 +335,12 @@ function ServerSettings({ onChanged }: { onChanged: () => void }) {
       <p className="muted small" style={{ margin: '12px 0 6px' }}>{t('ownKeyHint')}</p>
       <input className="text-input" type="password" autoComplete="off" placeholder="sk-ant-…" value={key}
         onChange={(e) => setKey(e.target.value)} onBlur={commit} aria-label={t('ownKey')} />
+      {key && (
+        <button className="btn btn-small btn-ghost" type="button" style={{ marginTop: 8 }} onClick={removeKey}>
+          🗑 {t('removeKey')}
+        </button>
+      )}
+      {problem && <p className="status-line" role="alert">⚠️ {problem}</p>}
       {key && !url && (
         <select
           value={model}

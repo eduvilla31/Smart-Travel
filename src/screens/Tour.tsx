@@ -9,6 +9,7 @@ import { getNarration, type Narration } from '../lib/narration';
 import { useCity } from '../city';
 import { fetchForecast, minutesUntilRain } from '../lib/weather';
 import * as speech from '../lib/speech';
+import { safeUrl } from '../lib/safe';
 
 export interface TourResult { route: PlannedRoute; visited: string[]; startedAt: number; minutes: number }
 
@@ -449,8 +450,8 @@ export default function Tour({ route, radiusM, places, resume, onProgress, onExi
             {activeN && (
               <p className="source small muted">
                 {t('source')}:{' '}
-                {activeN.sourceUrl ? (
-                  <a href={activeN.sourceUrl} target="_blank" rel="noopener noreferrer">{activeN.sourceLabel}</a>
+                {safeUrl(activeN.sourceUrl) ? (
+                  <a href={safeUrl(activeN.sourceUrl)} target="_blank" rel="noopener noreferrer">{activeN.sourceLabel}</a>
                 ) : (
                   activeN.sourceLabel
                 )}

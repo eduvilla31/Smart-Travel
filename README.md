@@ -115,7 +115,17 @@ There are no accounts, no analytics and no ads. Preferences, saved tours and cac
 
 **Your Anthropic key (own-key mode)** is stored only in that browser's storage and sent only to Anthropic. It is never in the code or on GitHub. Two things to know: anyone holding the unlocked phone could read it in the settings, and every project site under the same `username.github.io` address shares that storage, so only paste a key if you trust the other sites you publish there.
 
-**The server** refuses to run without an access code, checks and limits what it accepts, and only answers browsers from the origins in `ALLOWED_ORIGINS`.
+**Locked-down page.** The published app carries a Content-Security-Policy: the browser runs only the app's own scripts and lets it talk only to the services in the table above (plus `api.anthropic.com` and `*.workers.dev` for the optional Claude features). Tested: an injected script, a request to an outside server and a tracking image are all blocked. Links from news or answers open only if they are plain `https` addresses. The Claude server setting accepts only `https://…workers.dev` addresses, and the key field only accepts keys that look like Anthropic keys; a **Remove key** button wipes it from the phone.
+
+**The server** refuses to run without an access code (compared in constant time), limits how often each visitor can call it (60 narrations, 20 photos and 10 news checks per 10 minutes), checks and limits what it accepts, and only answers browsers from the origins in `ALLOWED_ORIGINS`.
+
+**Keeping it safe over time.** Dependabot checks the app, the server and the GitHub Actions weekly for security fixes and opens a pull request when one is needed. The deploy workflows run with the minimum permissions.
+
+**Your part (once, 5 minutes):**
+- Turn on two-factor authentication for GitHub: **github.com/settings/security**.
+- Keep **Keep my email addresses private** on: **github.com/settings/emails**.
+- If you add a Claude key, set a monthly spend limit in the Anthropic console, and don't paste it on phones you don't trust.
+- Note: every project you publish at `eduvilla31.github.io` shares that address with this app, so only publish projects you trust there.
 
 **City news** is found by web search and summarised by Claude. Every note links its source, and notes whose link the search did not return are dropped. Treat it as a hint, not as official information: check the source before changing plans.
 

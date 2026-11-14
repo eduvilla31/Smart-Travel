@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import worker, { cityContext, identify, narrate } from '../src/index';
+import worker, { cityContext, identify, narrate, rateLimited, sameSecret } from '../src/index';
 
 const env = { ANTHROPIC_API_KEY: 'test-key' };
 
@@ -132,5 +132,21 @@ describe('access control', () => {
     stubFetch([]);
     // right code: passes the gate and fails later only because this place has no source text
     expect((await worker.fetch(post({ 'X-Access-Code': 'friends' }), e)).status).toBe(404);
+  });
+});
+
+describe('abuse protection', () => {
+  it('compares access codes exactly', () => {
+    expect(sameSecret('friends', 'friends')).toBe(true);
+    expect(sameSecret('friend', 'friends')).toBe(false);
+    expect(sameSecret('', 'friends')).toBe(false);
+  });
+
+  it('limits photo requests per visitor and lets them through again later', () => {
+    const t0 = 1_000_000;
+    for (let i = 0; i < 20; i++) expect(rateLimited('1.2.3.4', '/identify', t0)).toBe(false);
+    expect(rateLimited('1.2.3.4', '/identify', t0)).toBe(true);
+    expect(rateLimited('5.6.7.8', '/identify', t0)).toBe(false); // other visitors unaffected
+    expect(rateLimited('1.2.3.4', '/identify', t0 + 11 * 60 * 1000)).toBe(false);
   });
 });

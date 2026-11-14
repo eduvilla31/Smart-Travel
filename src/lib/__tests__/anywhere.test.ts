@@ -107,3 +107,18 @@ describe('natural voice choice', () => {
     expect(voiceScore(voices[5], 'en')).toBe(-1000); // Spanish voice never reads English
   });
 });
+
+describe('safe links and servers', () => {
+  it('only lets plain https links through', async () => {
+    const { safeUrl, isAllowedServer } = await import('../safe');
+    expect(safeUrl('https://news.example/a')).toBe('https://news.example/a');
+    expect(safeUrl('javascript:alert(1)')).toBeUndefined();
+    expect(safeUrl('data:text/html,<b>x</b>')).toBeUndefined();
+    expect(safeUrl('http://news.example/a')).toBeUndefined();
+    expect(safeUrl('not a url')).toBeUndefined();
+    expect(isAllowedServer('https://smart-travel-api.me.workers.dev')).toBe(true);
+    expect(isAllowedServer('http://smart-travel-api.me.workers.dev')).toBe(false);
+    expect(isAllowedServer('https://evil.example')).toBe(false);
+    expect(isAllowedServer('http://localhost:8787')).toBe(true);
+  });
+});

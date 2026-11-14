@@ -5,6 +5,7 @@ import type { Lang, LatLng, Poi } from '../types';
 import { apiPost, hasApi } from '../lib/api';
 import { angleDiff, bearingDeg, haversineM } from '../lib/geo';
 import { getNarration } from '../lib/narration';
+import { safeUrl } from '../lib/safe';
 import * as speech from '../lib/speech';
 
 interface Props {
@@ -165,7 +166,7 @@ export default function PhotoIdentify({ pois, position, onClose }: Props) {
             name: res.name,
             short: res.short,
             lang: res.lang,
-            sourceUrl: res.sourceUrl,
+            sourceUrl: safeUrl(res.sourceUrl),
             alternatives: res.alternatives.map((a) => byId(a.candidateId)).filter((p): p is Poi => !!p),
           };
         } catch {
