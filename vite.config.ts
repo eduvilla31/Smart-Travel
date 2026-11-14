@@ -29,13 +29,13 @@ function securityHeaders(apiUrl: string): Plugin {
   ].filter(Boolean);
   const csp = [
     "default-src 'self'",
-    "script-src 'self'",
+    "script-src 'self' 'wasm-unsafe-eval'", // the on-phone voice runs as WebAssembly
     "style-src 'self' 'unsafe-inline'", // Leaflet positions map tiles with inline styles
     "img-src 'self' data: blob: https://tile.openstreetmap.org",
     `connect-src ${connect.join(' ')}`,
     "font-src 'self'",
-    "media-src 'self'",
-    "worker-src 'self'",
+    "media-src 'self' blob:", // generated voice audio
+    "worker-src 'self' blob:",
     "manifest-src 'self'",
     "object-src 'none'",
     "frame-src 'none'",

@@ -1,4 +1,5 @@
 import type { Lang } from '../types';
+import { isPrepared, loadNeural, neuralPref, neuralState, synthesize } from './neuralVoice';
 
 /** Narration via the Web Speech API. One queue: a new speak() replaces the old one. */
 const synth: SpeechSynthesis | undefined = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
@@ -98,10 +99,96 @@ export function chunkText(text: string, max = 280): string[] {
   return out;
 }
 
-export function speak(text: string, lang: Lang): Promise<boolean> {
+// ---------- natural AI voice (plays generated audio) ----------
+const player: HTMLAudioElement | undefined = typeof Audio !== 'undefined' ? new Audio() : undefined;
+let endCurrent: (() => void) | null = null;
+let neuralActive = false;
+
+/** Is the natural voice switched on and usable for this language? */
+function neuralOn(lang: Lang): boolean {
+  if (lang !== 'en' || !player || !neuralPref().on) return false;
+  if (neuralState().status === 'ready') return true;
+  if (neuralState().status === 'off') loadNeural().catch(() => undefined); // get it ready for next time
+  return false;
+}
+
+function playUrl(url: string, my: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (!player || my !== token) return resolve(false);
+    const done = (ok: boolean) => {
+      player.onended = player.onerror = null;
+      endCurrent = null;
+      resolve(ok);
+    };
+    endCurrent = () => done(false);
+    player.onended = () => done(true);
+    player.onerror = () => done(false);
+    player.src = url;
+    player.play().catch(() => done(false));
+  });
+}
+
+async function speakNeural(text: string, my: number): Promise<'done' | 'stopped' | 'failed'> {
+  const voice = neuralPref().voice;
+  const chunks = chunkText(text, 240);
+  const jobs = chunks.map((c) => synthesize(c, voice)); // generated in order, played as each is ready
+  neuralActive = true;
+  try {
+    for (const job of jobs) {
+      let url: string;
+      try {
+        url = await job;
+      } catch {
+        return 'failed';
+      }
+      if (my !== token) return 'stopped';
+      if (!(await playUrl(url, my))) return my === token ? 'failed' : 'stopped';
+    }
+    return 'done';
+  } finally {
+    neuralActive = false;
+  }
+}
+
+/** Prepare narration in advance (e.g. the next stops) so it plays without waiting. */
+export function prefetch(texts: string[], lang: Lang) {
+  if (!neuralOn(lang)) return;
+  const voice = neuralPref().voice;
+  for (const t of texts) for (const c of chunkText(t, 240)) synthesize(c, voice).catch(() => undefined);
+}
+
+/**
+ * Speak text. The natural voice is used when its audio is already prepared
+ * (or when waitForNatural is set, e.g. the Test button). Otherwise the phone's
+ * voice speaks right away, and the natural audio is prepared for next time:
+ * nobody should stand in silence while the phone generates speech.
+ */
+export function speak(text: string, lang: Lang, opts: { waitForNatural?: boolean } = {}): Promise<boolean> {
   stop();
-  if (!synth || muted || !text.trim()) return Promise.resolve(false);
+  if (muted || !text.trim()) return Promise.resolve(false);
   const my = ++token;
+  const natural = neuralOn(lang);
+  const ready = natural && isPrepared(chunkText(text, 240), neuralPref().voice);
+  if (natural && !ready && !opts.waitForNatural) prefetch([text], lang);
+  if (natural && (ready || opts.waitForNatural)) {
+    setSpeaking(true);
+    return speakNeural(text, my).then((r) => {
+      if (r === 'done') {
+        setSpeaking(false);
+        return true;
+      }
+      if (r === 'stopped') return false;
+      return speakSystem(text, lang, my); // the AI voice failed: carry on with the phone's voice
+    });
+  }
+  return speakSystem(text, lang, my);
+}
+
+function speakSystem(text: string, lang: Lang, my: number): Promise<boolean> {
+  if (!synth) {
+    setSpeaking(false);
+    return Promise.resolve(false);
+  }
   const chunks = chunkText(text);
   const voice = pickVoice(lang);
   setSpeaking(true);
@@ -140,27 +227,48 @@ export function speak(text: string, lang: Lang): Promise<boolean> {
 export function stop() {
   token++;
   synth?.cancel();
+  if (player && !player.paused) player.pause();
+  endCurrent?.();
   if (speakingFlag) setSpeaking(false);
 }
 
 export function pause() {
-  synth?.pause();
+  if (neuralActive) player?.pause();
+  else synth?.pause();
 }
 
 export function resume() {
-  synth?.resume();
+  if (neuralActive) player?.play().catch(() => undefined);
+  else synth?.resume();
 }
 
-/** iOS only allows speech after a user tap: call this from the first tap. */
+/** A tenth of a second of silence, to unlock audio playback on iPhone. */
+function silentWav(): Blob {
+  const n = 2400;
+  const b = new DataView(new ArrayBuffer(44 + n * 2));
+  const str = (o: number, t: string) => [...t].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
+  str(0, 'RIFF'); b.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+  b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+  b.setUint32(24, 24000, true); b.setUint32(28, 48000, true); b.setUint16(32, 2, true); b.setUint16(34, 16, true);
+  str(36, 'data'); b.setUint32(40, n * 2, true);
+  return new Blob([b.buffer], { type: 'audio/wav' });
+}
+
+/** iOS only allows speech and audio after a user tap: call this from the first tap. */
 export function unlock() {
-  if (!synth) return;
-  const u = new SpeechSynthesisUtterance(' ');
-  u.volume = 0;
-  synth.speak(u);
+  if (synth) {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    synth.speak(u);
+  }
+  if (player) {
+    player.src = URL.createObjectURL(silentWav());
+    player.play().catch(() => undefined);
+  }
 }
 
 export const isSpeaking = () => speakingFlag || !!synth?.speaking;
-export const supported = () => !!synth;
+export const supported = () => !!synth || (!!player && neuralPref().on);
 export function setMuted(m: boolean) {
   muted = m;
   if (m) stop();

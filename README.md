@@ -140,14 +140,12 @@ There are no accounts, no analytics and no ads. Preferences, saved tours and cac
 - Coordinates and Wikipedia titles of the curated places were checked against Wikidata. Entries marked `"approx": true` in the seed files could not be checked that way (11 of 33 in Basel, 7 of 39 in Venice) and are placed from memory, so their 25–35 m trigger may be off.
 - **Not verified:** the Overpass places query (both servers were unreachable from the test machine, so only the built-in list was exercised), real Claude calls (no API key was available; the Claude API was simulated), and real phones (iPhone speech, GPS and compass were tested only in a desktop browser emulating a phone).
 
-## Getting a more natural voice
+## Natural voice
 
-The app speaks with the voices built into the phone, and picks the best one automatically. The biggest improvement is free:
+Two voices are available, under **More options**:
 
-- **iPhone:** Settings → Accessibility → **Read & Speak** (called **Spoken Content** on older iOS) → **Voices** → English (and Spanish) → download a voice marked **Premium** or **Enhanced**. Then in the app: **More options → Narration voice → Test**, and pick it. Siri's own voices can't be used by websites.
-- **Android:** Chrome uses Google's voices, which already sound fairly natural.
-
-An even more human voice would need a paid text-to-speech service (and its own key), which could be added to the server later.
+- **✨ Natural AI voice (English):** a free, open-source AI voice (Kokoro) that runs on the phone itself, so nothing is sent anywhere. Switch it on once on Wi-Fi: it downloads about 90 MB, then works offline. Six voices are included (American and British, female and male); tap **Test**. Creating speech on the phone takes a little longer than the speech itself, so during a walk the app prepares the next stops while you walk. If a story isn't ready yet (the first stop, or "Tell me more" right away), it is read at once with the phone's voice instead of making you wait. Spanish stories use the phone's voice.
+- **Phone voice:** the voices built into the phone. On iPhone, download a **Premium** or **Enhanced** voice under Settings → Accessibility → Read & Speak → Voices for a better one.
 
 ## Known limits
 

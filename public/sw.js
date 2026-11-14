@@ -1,6 +1,6 @@
 /* Smart Travel service worker: caches the app shell and map tiles you've seen,
  * so a started tour survives a short signal loss. API calls always go to the network. */
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL = `shell-${VERSION}`;
 const TILES = `tiles-${VERSION}`;
 const MAX_TILES = 400;
@@ -46,6 +46,9 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
+
+  // The voice model and speech engine are large and cached by the voice library itself.
+  if (url.origin === self.location.origin && /\/(models|ort)\//.test(url.pathname)) return;
 
   // Our own files: network-first, fall back to cache when offline.
   if (url.origin === self.location.origin) {
