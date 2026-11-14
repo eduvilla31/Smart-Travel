@@ -10,6 +10,7 @@ import { useCity } from '../city';
 import { fetchForecast, minutesUntilRain } from '../lib/weather';
 import * as speech from '../lib/speech';
 import { safeUrl } from '../lib/safe';
+import { startCompass } from '../lib/compass';
 
 export interface TourResult { route: PlannedRoute; visited: string[]; startedAt: number; minutes: number }
 
@@ -353,7 +354,10 @@ export default function Tour({ route, radiusM, places, resume, onProgress, onExi
         >
           {muted ? '🔇' : '🔊'}
         </button>
-        <button className="icon-btn" type="button" aria-label={t('identifyTitle')} onClick={() => setPhoto(true)}>📷</button>
+        <button className="icon-btn" type="button" aria-label={t('identifyTitle')} onClick={() => {
+            startCompass(); // its own tap, so the camera tap stays free
+            setPhoto(true);
+          }}>📷</button>
         {started && (
           <button className="icon-btn" type="button" aria-label={t('walkScreen')} onClick={() => setDim(true)}>🌙</button>
         )}
