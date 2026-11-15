@@ -94,18 +94,6 @@ export function sentences(text: string): string[] {
     .filter((s) => s.length > 1);
 }
 
-function takeWords(list: string[], from: number, maxWords: number, minSentences = 1) {
-  const out: string[] = [];
-  let words = 0;
-  let i = from;
-  for (; i < list.length; i++) {
-    const w = list[i].split(/\s+/).length;
-    if (out.length >= minSentences && words + w > maxWords) break;
-    out.push(list[i]);
-    words += w;
-  }
-  return { text: out.join(' '), next: i };
-}
 
 /** Body paragraphs of a plaintext extract (exsectionformat=wiki), headings removed. */
 export function bodyParagraphs(extract: string): string[] {
@@ -123,18 +111,58 @@ export function bodyParagraphs(extract: string): string[] {
   return paras;
 }
 
+// Sentences a listener enjoys: stories, superlatives, things to look at.
+const LIVELY =
+  /\b(legend|story|tale|myth|said to|believed|famous|known for|nicknamed|named after|oldest|tallest|largest|biggest|first|only|unique|hidden|secret|ghost|miracle|tradition|festival|ritual|view|views|overlook|statue|fresco|mosaic|painted|carved|gold|golden|tower|dome|bell|garden|visitors|pilgrims|emperor|king|queen|monk|artist|poet|built by|designed by|destroyed|fire|earthquake|war|survived|rebuilt|leyenda|historia|famos|conocid|más antigu|más alt|primer|único|vista|estatua|torre|cúpula|jardín|visitantes|rey|reina|artista|incendio|terremoto|guerra)/i;
+// Sentences that sound like a register: administration, renovations, addresses, statistics.
+const DRY =
+  /\b(renovat|refurbish|restoration work|listed (building|as)|heritage register|cultural property|designated|administ|municipal|managed by|operated by|owned by|company|corporation|subsidiary|located at|address|postal|coordinates|population|census|square kilomet|hectares|km²|ward|district of|prefecture|county|line|platform|timetable|ridership|passengers|budget|million (yen|dollars|euros)|according to|citation|ISBN|retrieved|official website|is served by|bus stop|parking|admission fee|opening hours|renovación|restauración|administra|municipal|ubicad|dirección|población|habitantes|gestionad|propiedad de)/i;
+
+/** How good a sentence is to listen to (higher is better). Exported for tests. */
+export function sentenceScore(sentence: string, index: number): number {
+  let score = 0;
+  if (LIVELY.test(sentence)) score += 3;
+  if (DRY.test(sentence)) score -= 4;
+  const numbers = (sentence.match(/\d[\d.,]*/g) ?? []).length;
+  if (numbers > 2) score -= numbers - 2; // lists of figures are hard to follow by ear
+  const words = sentence.split(/\s+/).length;
+  if (words > 45) score -= 2; // very long sentences lose the listener
+  if (words < 6) score -= 1;
+  return score - index * 0.15; // earlier sentences are usually more relevant
+}
+
+/** Pick the best sentences within a word budget, keeping their original order. */
+function pick(list: { s: string; i: number }[], maxWords: number, minCount: number): { s: string; i: number }[] {
+  const ranked = [...list].sort((a, b) => sentenceScore(b.s, b.i) - sentenceScore(a.s, a.i));
+  const out: { s: string; i: number }[] = [];
+  let words = 0;
+  for (const c of ranked) {
+    const w = c.s.split(/\s+/).length;
+    if (out.length >= minCount && (words + w > maxWords || sentenceScore(c.s, c.i) < -2)) continue;
+    out.push(c);
+    words += w;
+    if (words >= maxWords) break;
+  }
+  return out.sort((a, b) => a.i - b.i);
+}
+
 export function buildFromExtract(extract: string, name: string, lang: Lang, title = name) {
-  const all = sentences(cleanForSpeech(bodyParagraphs(extract).join(' ')));
-  const s = takeWords(all, 0, SHORT_WORDS, 2);
-  // The long version picks up where the short one stopped.
-  const l = takeWords(all, s.next, LONG_WORDS, 2);
+  const all = sentences(cleanForSpeech(bodyParagraphs(extract).join(' '))).map((s, i) => ({ s, i }));
+  if (!all.length) return { short: '', long: undefined };
+  // The first sentence says what the place is: always keep it, then add the liveliest ones.
+  const [opening, ...rest] = all;
+  const shortPicks = [opening, ...pick(rest.slice(0, 25), SHORT_WORDS - opening.s.split(/\s+/).length, 1)].sort((a, b) => a.i - b.i);
+  const used = new Set(shortPicks.map((x) => x.i));
+  const longPicks = pick(rest.filter((x) => !used.has(x.i)).slice(0, 60), LONG_WORDS, 2);
   const lead = lang === 'es' ? `Parada: ${name}.` : `Next stop: ${name}.`;
   // Skip the lead-in when the first sentence already names the place.
-  const first = (all[0] ?? '').toLowerCase();
+  const first = opening.s.toLowerCase();
   const namesIt = [name, title].some((n) => first.includes(n.toLowerCase().split(/ \(|,/)[0]));
+  const short = shortPicks.map((x) => x.s).join(' ');
+  const long = longPicks.map((x) => x.s).join(' ');
   return {
-    short: namesIt ? s.text : `${lead} ${s.text}`,
-    long: l.text || undefined,
+    short: namesIt ? short : `${lead} ${short}`,
+    long: long || undefined,
   };
 }
 
@@ -151,7 +179,7 @@ function seedNarration(poi: Poi, lang: Lang, label: string): Narration | null {
  * then the hand-written seed notes, then a minimal line from the name.
  */
 export async function getNarration(poi: Poi, lang: Lang, seedLabel: string): Promise<Narration> {
-  const key = `narr:v3:${lang}:${poi.id}`;
+  const key = `narr:v4:${lang}:${poi.id}`;
   const name = poi.name[lang] ?? poi.name.en;
   let result: Narration | null = loadCached<Narration>(key, WEEK);
 

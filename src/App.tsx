@@ -9,11 +9,13 @@ import { setDetourFactor } from './lib/geo';
 import { hasApi } from './lib/api';
 import { fetchCityContext, type ContextNote } from './lib/context';
 import { budgets, planRoutes } from './lib/planner';
-import { analyseForecast, fetchForecast, type ForecastData } from './lib/weather';
+import { analyseForecast, analyseWeek, fetchForecast, minutesUntilDay, type ForecastData } from './lib/weather';
+import { dayName } from './components/WeatherCard';
 import Home from './screens/Home';
 import RoutesScreen from './screens/RoutesScreen';
 import Tour, { type TourResult } from './screens/Tour';
 import Summary from './screens/Summary';
+import Settings from './screens/Settings';
 
 const DEFAULT_PREFS: Preferences = {
   lang: navigator.language?.toLowerCase().startsWith('es') ? 'es' : 'en',
@@ -28,7 +30,7 @@ const DEFAULT_PREFS: Preferences = {
   avoidStairs: false,
 };
 
-type Screen = 'home' | 'routes' | 'tour' | 'summary';
+type Screen = 'home' | 'routes' | 'tour' | 'summary' | 'settings';
 
 /** Start and end reset to places in the newly chosen city. */
 const freshPlaces = (startId: string): Partial<Preferences> => ({
@@ -189,7 +191,17 @@ export default function App() {
   const cityTz = city.city.timezone === 'auto' ? forecast?.timezone ?? deviceTz : city.city.timezone;
 
   const plannedMinutes = prefs.limitBy === 'duration' ? prefs.durationMin : Math.round((prefs.distanceKm / 4.5) * 60 + 30);
-  const weather = useMemo(() => (forecast ? analyseForecast(forecast, plannedMinutes) : null), [forecast, plannedMinutes]);
+  // The week ahead; the walk can be planned for any of its days (0 = today).
+  const [planDay, setPlanDay] = useState(0);
+  const week = useMemo(() => (forecast ? analyseWeek(forecast) : []), [forecast]);
+  const weather = useMemo(() => {
+    if (!forecast) return null;
+    const day = week[planDay];
+    const offset = day ? minutesUntilDay(forecast, day) : 0;
+    const w = analyseForecast(forecast, plannedMinutes, offset);
+    return day && day.index > 0 ? { ...w, dayLabel: dayName(day, lang, t, true).toLowerCase() } : w;
+  }, [forecast, week, planDay, plannedMinutes, lang, t]);
+  useEffect(() => setPlanDay(0), [city]);
 
   // Suggested start/end places: the city's own list, plus main stations for searched cities.
   const [hubs, setHubs] = useState<StartPoint[]>([]);
@@ -255,6 +267,8 @@ export default function App() {
         prefs,
         start: startPlace,
         station: endPlace, // used when the walk should end at a chosen place
+        planStart: new Date(Date.now() + (forecast && week[planDay] ? minutesUntilDay(forecast, week[planDay]) : 0) * 60000),
+        timeZone: cityTz,
         weather: w,
         ignoreWeather,
         blocked,
@@ -284,6 +298,25 @@ export default function App() {
       route: r.route,
     };
     const next = [entry, ...savedTours.filter((s) => s.id !== entry.id)].slice(0, 12); // routes include their path, so keep the list short
+    setSavedTours(next);
+    save('savedTours', next);
+  };
+
+  // A walk saved for offline goes to "Saved tours", ready to start without internet.
+  const saveOffline = (route: PlannedRoute) => {
+    const entry: SavedTour = {
+      id: route.id,
+      cityId: city.city.id,
+      city: isCustomCity(city.city.id) ? city : undefined,
+      date: new Date().toISOString(),
+      title: `${route.title} · ${loc(city.city.name, lang)}`,
+      stops: route.stops.map((s) => loc(s.name, lang)),
+      distanceKm: route.distanceKm,
+      minutes: route.totalMin,
+      route,
+      offline: true,
+    };
+    const next = [entry, ...savedTours.filter((s) => s.id !== entry.id)].slice(0, 12);
     setSavedTours(next);
     save('savedTours', next);
   };
@@ -322,6 +355,10 @@ export default function App() {
           activeTour={activeTour}
           onResume={() => activeTour && startTour(activeTour.route, activeTour, activeTour.cityId, activeTour.city)}
           onChooseCity={chooseCity}
+          week={week}
+          planDay={planDay}
+          setPlanDay={setPlanDay}
+          onOpenSettings={() => setScreen('settings')}
           points={points}
           gpsInCity={gpsInCity}
           onChooseSearched={chooseSearched}
@@ -331,6 +368,9 @@ export default function App() {
           onDiscard={clearActive}
           onWalkAgain={(r, cityId, cityData) => startTour(r, null, cityId, cityData)}
         />
+      )}
+      {screen === 'settings' && (
+        <Settings prefs={prefs} setPrefs={setPrefs} onApiChanged={() => setContextKey((k) => k + 1)} onBack={() => setScreen('home')} />
       )}
       {screen === 'routes' && (
         <RoutesScreen
@@ -345,6 +385,7 @@ export default function App() {
             setResume(null);
             setScreen('tour');
           }}
+          onSaveOffline={saveOffline}
         />
       )}
       {screen === 'tour' && routes[selected] && (

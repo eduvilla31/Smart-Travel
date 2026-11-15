@@ -130,3 +130,23 @@ describe('narration text', () => {
     expect(n.short + n.long).not.toMatch(/Ignore me/);
   });
 });
+
+describe('livelier stories from Wikipedia', () => {
+  it('keeps the opening, prefers stories and skips register-like sentences', async () => {
+    const { buildFromExtract, sentenceScore } = await import('../narration');
+    const extract = [
+      'Kiyomizu-dera is a Buddhist temple in eastern Kyoto.',
+      'The temple is administered by the Kita-Hossō school and its address is 1-294 Kiyomizu.',
+      'According to legend, the temple was founded in 778 after a monk dreamed of a waterfall.',
+      'Renovation work took place in 1633, 1957, 2008 and 2020, costing 4.1 million yen.',
+      'Its famous wooden stage juts out over the hillside and offers views of the whole city.',
+      'Visitors drink from the three streams of the Otowa waterfall, each said to grant a different wish.',
+    ].join(' ');
+    const n = buildFromExtract(extract, 'Kiyomizu-dera', 'en');
+    expect(n.short.startsWith('Kiyomizu-dera is a Buddhist temple')).toBe(true);
+    expect(n.short).toContain('legend');
+    expect(n.short).not.toContain('address');
+    expect(`${n.short} ${n.long ?? ''}`).not.toContain('Renovation work');
+    expect(sentenceScore('Its famous wooden stage offers views of the city.', 3)).toBeGreaterThan(sentenceScore('The station is operated by the company on line 3.', 3));
+  });
+});

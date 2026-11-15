@@ -12,6 +12,8 @@ import * as speech from '../lib/speech';
 import { safeUrl } from '../lib/safe';
 import { startCompass } from '../lib/compass';
 import { neuralPref } from '../lib/neuralVoice';
+import { introText } from '../lib/prepare';
+import { hoursLabel } from '../lib/openingHours';
 
 export interface TourResult { route: PlannedRoute; visited: string[]; startedAt: number; minutes: number }
 
@@ -278,15 +280,7 @@ export default function Tour({ route, radiusM, places, resume, onProgress, onExi
       return;
     }
     startedAt.current = Date.now();
-    const first = route.stops[0];
-    say(
-      t('tourIntro', {
-        title: route.title,
-        n: route.stops.length,
-        time: fmtDuration(route.totalMin, t),
-        first: first ? loc(first.name, lang) : '',
-      }),
-    );
+    say(introText(route, lang, t));
   };
 
   const skip = () => {
@@ -466,7 +460,7 @@ export default function Tour({ route, radiusM, places, resume, onProgress, onExi
                 <div className="muted small">
                   {active.indoor ? `🏠 ${t('indoor')} · ` : ''}
                   {me ? fmtDist(haversineM(me, active)) : ''}
-                  {active.openingHours ? ` · 🕒 ${active.openingHours}` : ''}
+                  {hoursLabel(route.hours?.[active.id], t) ? ` · ${hoursLabel(route.hours?.[active.id], t)}` : active.openingHours ? ` · 🕒 ${active.openingHours}` : ''}
                 </div>
               </div>
             </div>
@@ -507,6 +501,7 @@ export default function Tour({ route, radiusM, places, resume, onProgress, onExi
                 <span className="muted small">
                   {status[s.id] ? t(status[s.id] as 'visited' | 'skipped') : me ? fmtDist(haversineM(me, s)) : ''}
                   {s.indoor ? ' · 🏠' : ''}
+                  {hoursLabel(route.hours?.[s.id], t) ? ` · ${hoursLabel(route.hours?.[s.id], t)}` : ''}
                 </span>
               </span>
             </li>

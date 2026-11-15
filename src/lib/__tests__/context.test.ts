@@ -45,3 +45,22 @@ describe('photo identify without the server (milestone 6 fallback)', () => {
     expect(guessFromPosition(cands, 90).map((p) => p.id)).not.toContain('spalentor');
   });
 });
+
+describe('opening hours in routes', () => {
+  it('leaves out a museum closed for the whole walk and labels the others', async () => {
+    const museums = SEED_POIS.map((p) =>
+      p.id === 'kunstmuseum' ? { ...p, openingHours: 'Tu-Su 10:00-18:00; Mo off' } : p.id === 'historisches-museum' ? { ...p, openingHours: 'Mo-Su 10:00-17:00' } : p,
+    );
+    const routes = await planRoutes({
+      pois: museums,
+      prefs: { lang: 'en', cityId: 'basel', limitBy: 'duration', durationMin: 120, distanceKm: 5, interests: ['artists', 'historic'], startId: 'marktplatz', end: 'loop', pace: 'normal', avoidStairs: false },
+      start: sp('marktplatz'), station: sp('sbb'), weather: null, ignoreWeather: false, t, lang: 'en',
+      planStart: new Date('2026-11-16T11:00:00+01:00'), // a Monday
+      timeZone: 'Europe/Zurich',
+    });
+    for (const r of routes) expect(r.stops.map((s) => s.id)).not.toContain('kunstmuseum');
+    expect(routes[0].reasons.join(' ')).toContain('is closed at that time');
+    const withHist = routes.find((r) => r.stops.some((s) => s.id === 'historisches-museum'));
+    expect(withHist?.hours?.['historisches-museum']).toMatchObject({ state: 'open', closes: '17:00' });
+  });
+});

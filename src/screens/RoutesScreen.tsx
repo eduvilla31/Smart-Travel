@@ -1,4 +1,7 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { prepareRouteStart } from '../lib/prepare';
+import { hoursLabel } from '../lib/openingHours';
+import OfflineButton from '../components/OfflineButton';
 import MapView, { type MapStop } from '../components/MapView';
 import ContextCard from '../components/ContextCard';
 import type { ContextState } from '../App';
@@ -15,11 +18,16 @@ interface Props {
   weather: WeatherAnalysis | null;
   onBack: () => void;
   onStart: () => void;
+  onSaveOffline: (r: PlannedRoute) => void;
 }
 
-export default function RoutesScreen({ routes, selected, setSelected, placesNote, context, onBack, onStart }: Props) {
+export default function RoutesScreen({ routes, selected, setSelected, placesNote, context, onBack, onStart, onSaveOffline }: Props) {
   const { t, lang } = useI18n();
   const route = routes[selected];
+  // Natural voice: prepare the start of the selected walk while the user looks at it.
+  useEffect(() => {
+    if (route) prepareRouteStart(route, lang, t, t('seedSource')).catch(() => undefined);
+  }, [route, lang, t]);
   const stops: MapStop[] = useMemo(
     () => (route?.stops ?? []).map((s, i) => ({ id: s.id, lat: s.lat, lng: s.lng, label: String(i + 1), title: loc(s.name, lang), status: 'todo' })),
     [route, lang],
@@ -76,7 +84,11 @@ export default function RoutesScreen({ routes, selected, setSelected, placesNote
                   </ul>
                   <ol className="mini-stops">
                     {r.stops.map((s) => (
-                      <li key={s.id}>{loc(s.name, lang)}{s.indoor ? ' 🏠' : ''}</li>
+                      <li key={s.id}>
+                        {loc(s.name, lang)}
+                        {s.indoor ? ' 🏠' : ''}
+                        {hoursLabel(r.hours?.[s.id], t) && <span className="hours-badge"> {hoursLabel(r.hours?.[s.id], t)}</span>}
+                      </li>
                     ))}
                   </ol>
                 </>
@@ -84,6 +96,7 @@ export default function RoutesScreen({ routes, selected, setSelected, placesNote
             </button>
           ))}
         </div>
+        {route && route.stops.length > 0 && <OfflineButton key={route.id} route={route} onSaved={onSaveOffline} />}
         {route && route.stops.length > 0 && (
           <button className="btn btn-primary btn-block sticky-cta" type="button" onClick={onStart}>
             ▶ {t('start')} · {route.title}
