@@ -100,6 +100,57 @@ export function loadNeural(): Promise<KokoroTTS> {
 /** Audio for a piece of text, cached so a stop prepared in advance plays instantly. */
 const cache = new Map<string, Promise<string>>();
 const prepared = new Set<string>(); // keys whose audio is finished
+
+// Finished audio is also kept in the browser's Cache Storage, so prepared stories
+// survive closing the app (and work offline). Keys are short hashes of voice + text.
+const AUDIO_CACHE = 'smart-travel-voice';
+const MAX_SAVED = 200;
+function hash(s: string): string {
+  let h1 = 0xdeadbeef ^ s.length;
+  let h2 = 0x41c6ce57 ^ s.length;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 2654435761);
+    h2 = Math.imul(h2 ^ c, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(36) + (h1 >>> 0).toString(36);
+}
+const savedUrl = (key: string) => new URL(`__voice/${hash(key)}`, document.baseURI).href;
+const hasCacheApi = () => typeof caches !== 'undefined';
+
+// Know at start-up which audio is already saved, so it plays without waiting.
+const savedHashes = new Set<string>();
+if (typeof document !== 'undefined' && hasCacheApi())
+  caches
+    .open(AUDIO_CACHE)
+    .then((c) => c.keys())
+    .then((keys) => keys.forEach((r) => savedHashes.add(r.url.split('/__voice/')[1])))
+    .catch(() => undefined);
+
+async function loadSaved(key: string): Promise<string | null> {
+  if (!hasCacheApi()) return null;
+  try {
+    const hit = await (await caches.open(AUDIO_CACHE)).match(savedUrl(key));
+    return hit ? URL.createObjectURL(await hit.blob()) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function save(key: string, blob: Blob) {
+  if (!hasCacheApi()) return;
+  try {
+    const c = await caches.open(AUDIO_CACHE);
+    await c.put(savedUrl(key), new Response(blob, { headers: { 'Content-Type': 'audio/wav' } }));
+    savedHashes.add(hash(key));
+    const keys = await c.keys();
+    for (const old of keys.slice(0, Math.max(0, keys.length - MAX_SAVED))) await c.delete(old);
+  } catch {
+    /* storage full or unavailable: audio still plays from memory */
+  }
+}
 let queue: Promise<unknown> = Promise.resolve(); // one generation at a time keeps the phone responsive
 
 export function synthesize(text: string, voice: NeuralVoiceId): Promise<string> {
@@ -107,11 +158,16 @@ export function synthesize(text: string, voice: NeuralVoiceId): Promise<string> 
   const hit = cache.get(key);
   if (hit) return hit;
   const job = queue.then(async () => {
+    const saved = await loadSaved(key);
+    if (saved) {
+      prepared.add(key);
+      return saved;
+    }
     const tts = await loadNeural();
-    const audio = await tts.generate(text, { voice });
-    const url = URL.createObjectURL(audio.toBlob());
+    const blob = (await tts.generate(text, { voice })).toBlob();
+    await save(key, blob);
     prepared.add(key);
-    return url;
+    return URL.createObjectURL(blob);
   });
   queue = job.catch(() => undefined);
   cache.set(key, job);
@@ -126,6 +182,7 @@ export function synthesize(text: string, voice: NeuralVoiceId): Promise<string> 
 }
 
 /** Is the audio for all these pieces already made? (Generation is slower than speech.) */
-export const isPrepared = (pieces: string[], voice: NeuralVoiceId) => pieces.every((p) => prepared.has(`${voice}|${p}`));
+export const isPrepared = (pieces: string[], voice: NeuralVoiceId) =>
+  pieces.every((p) => prepared.has(`${voice}|${p}`) || savedHashes.has(hash(`${voice}|${p}`)));
 
 export const neuralSupported = () => typeof WebAssembly === 'object' && typeof Blob !== 'undefined';

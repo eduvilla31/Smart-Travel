@@ -12,6 +12,7 @@ import { haversineM, walkKm } from './geo';
 import { importance } from './places';
 import { walkingPath } from './routing';
 import { describeCode, type WeatherAnalysis } from './weather';
+import { openStatus, type OpenStatus } from './openingHours';
 
 export const DWELL_MIN = 4; // minutes spent at each stop
 export const MAX_STOPS = 12;
@@ -145,6 +146,9 @@ export interface PlanContext {
   ignoreWeather: boolean;
   /** Stops to avoid today (closures, demonstrations), with a short reason. */
   blocked?: { id: string; title: string }[];
+  /** When the walk starts (now, or the best hours of a later day) and the city's time zone. */
+  planStart?: Date;
+  timeZone?: string;
   t: T;
   lang: Lang;
 }
@@ -204,6 +208,19 @@ async function buildOne(
   const totalMin = walkMin + stops.length * DWELL_MIN;
   const { t } = ctx;
   const reasons = [...extraReasons];
+  // Opening status at each stop's estimated arrival time.
+  const hours: Record<string, OpenStatus> = {};
+  if (ctx.planStart) {
+    let minutes = 0;
+    let prev: LatLng = sel.start;
+    for (const s of stops) {
+      minutes += (walkKm(prev, s) / sel.kmh) * 60;
+      const st = openStatus(s.openingHours, new Date(ctx.planStart.getTime() + minutes * 60000), ctx.timeZone);
+      if (st.state !== 'unknown') hours[s.id] = st;
+      minutes += DWELL_MIN;
+      prev = s;
+    }
+  }
   reasons.push(
     stops.length < 4
       ? t('reasonShort', { n: stops.length })
@@ -223,6 +240,7 @@ async function buildOne(
     totalMin,
     routed: walk.routed,
     reasons,
+    hours,
   };
 }
 
@@ -241,7 +259,20 @@ export async function planRoutes(ctxIn: PlanContext): Promise<PlannedRoute[]> {
   const contextNotes = ctx.pois
     .filter((p) => blocked.has(p.id) && haversineM(ctx.start, p) <= b.radiusKm * 1000)
     .map((p) => t('reasonContext', { stop: loc(p.name, lang), title: blocked.get(p.id)! }));
-  ctx = { ...ctx, pois };
+  // Places closed for the whole walk are left out, and we say so.
+  const closedNotes: string[] = [];
+  let open = pois;
+  if (ctx.planStart) {
+    const at = (min: number) => new Date(ctx.planStart!.getTime() + min * 60000);
+    const closedAll = (p: Poi) =>
+      [0, b.budgetMin / 2, Math.min(b.budgetMin, 240)].every((m) => openStatus(p.openingHours, at(m), ctx.timeZone).state === 'closed');
+    open = pois.filter((p) => !closedAll(p));
+    pois
+      .filter((p) => !open.includes(p) && haversineM(ctx.start, p) <= b.radiusKm * 1000 && importance(p) >= 5)
+      .slice(0, 2)
+      .forEach((p) => closedNotes.push(t('reasonClosed', { stop: loc(p.name, lang) })));
+  }
+  ctx = { ...ctx, pois: open };
 
   const base: SelectInput = {
     pois: ctx.pois,
@@ -255,7 +286,7 @@ export async function planRoutes(ctxIn: PlanContext): Promise<PlannedRoute[]> {
     radiusKm: b.radiusKm,
   };
 
-  const weatherNotes: string[] = [...contextNotes];
+  const weatherNotes: string[] = [...contextNotes, ...closedNotes];
   if (w?.hot) {
     base.parkBonus = 3;
     weatherNotes.push(t('reasonHeat', { temp: w.maxTemp }));
@@ -268,12 +299,16 @@ export async function planRoutes(ctxIn: PlanContext): Promise<PlannedRoute[]> {
     // Shorter, indoor-heavy, ending at a covered stop.
     const why = w.wetNow
       ? t('rainNow', { desc: describeCode(w.currentCode, lang).text })
-      : t('rainAt', { time: w.rainFrom ?? '', prob: w.rainFromProb ?? w.maxProb });
+      : w.dayLabel
+        ? t('rainAtDay', { day: w.dayLabel, time: w.rainFrom ?? '', prob: w.rainFromProb ?? w.maxProb })
+        : t('rainAt', { time: w.rainFrom ?? '', prob: w.rainFromProb ?? w.maxProb });
     const planned = prefs.limitBy === 'duration' ? prefs.durationMin : Math.round((b.maxKm / b.kmh) * 60 + 8 * DWELL_MIN);
     const rainBudget = Math.max(45, Math.round(planned * 0.7));
     const rainSel: SelectInput = { ...base, budgetMin: rainBudget, maxKm: b.maxKm * 0.7, indoorBonus: 6 };
+    // Shelter must be open (or have unknown hours) when we expect rain.
     const shelter = ctx.pois
       .filter((p) => p.indoor && haversineM(ctx.start, p) <= b.radiusKm * 700)
+      .filter((p) => !ctx.planStart || openStatus(p.openingHours, new Date(ctx.planStart.getTime() + rainBudget * 60000), ctx.timeZone).state !== 'closed')
       .sort((x, y) => scorePoi(y, rainSel) - scorePoi(x, rainSel))[0];
     const shelterPlace = shelter ? { lat: shelter.lat, lng: shelter.lng, name: loc(shelter.name, lang) } : endPlace;
     const rain = await buildOne('rain', { ...rainSel, end: shelterPlace, pois: ctx.pois.filter((p) => p !== shelter) }, ctx, shelterPlace);
@@ -285,6 +320,7 @@ export async function planRoutes(ctxIn: PlanContext): Promise<PlannedRoute[]> {
     const indoor = rain.stops.filter((s) => s.indoor).length;
     rain.reasons = [
       ...contextNotes,
+      ...closedNotes,
       t('reasonRainShort', { why, min: rain.totalMin, orig: fmtDuration(planned, t), end: rain.end.name }),
       t('reasonRainIndoor', { why: '', indoor, stops: rain.stops.length }).trim(),
       ...rain.reasons.slice(-1),

@@ -18,6 +18,10 @@ It's a mobile web app (PWA): no accounts, no app store. You open a link and add 
 | 8 | Polish | ✅ Saved tours with "Walk again", EN/ES language switch, resume a tour after a reload or signal loss, offline banner, cached narration + map tiles |
 | + | Simulate walk | ✅ Walks a virtual you along the route (1×–40×) to test from anywhere |
 | + | Any city | ✅ The app detects the city you are in ("📍 Where I am"), or you search for any city, area or place ("I'm in Kyoto" works). Basel and Venice have curated places; other cities use OpenStreetMap, with Wikipedia's nearby articles as a backup |
+| + | Week weather | ✅ 7-day forecast with each day rated (good for walking, mixed, museum day) and its driest hours. Tap a day to plan for it; advice like "Wet today, dry tomorrow: museums today, the outdoor walk tomorrow" |
+| + | Opening hours | ✅ Stops get "Closes 17:00" / "Closed when you arrive" from OpenStreetMap opening hours; places closed for the whole walk are left out, and rainy-day routes only shelter in open places |
+| + | Offline walks | ✅ "Save this walk for offline" keeps the stories, the natural-voice audio and the route; the app itself opens without internet after one visit |
+| + | Settings | ✅ The home screen only has what's needed to plan; language, voices, walking pace, stairs and Claude features are under ⚙️ |
 | + | Natural voice | ✅ Picks the most natural voice on the phone (Premium/Enhanced on iPhone, Google voices on Android), with a voice chooser and Test button under **More options** |
 
 **Narration** comes from Claude when the server is set up, written only from the stop's Wikipedia article. Without the server, it is the article's own text trimmed for speech, and if Wikipedia is unreachable, the hand-written notes in `src/data/basel-seed.json`. Every stop links its source.

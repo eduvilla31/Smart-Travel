@@ -100,6 +100,11 @@ export function chunkText(text: string, max = 280): string[] {
 }
 
 // ---------- natural AI voice (plays generated audio) ----------
+// Longer pieces read more naturally (intonation across sentences, fewer pauses);
+// the model handles up to about 500 sound units, so ~300 characters is safe.
+const NEURAL_CHUNK = 300;
+/** The pieces a text is spoken in by the natural voice (used to prepare audio in advance). */
+export const chunkForVoice = (text: string) => chunkText(text, NEURAL_CHUNK);
 const player: HTMLAudioElement | undefined = typeof Audio !== 'undefined' ? new Audio() : undefined;
 let endCurrent: (() => void) | null = null;
 let neuralActive = false;
@@ -130,7 +135,7 @@ function playUrl(url: string, my: number): Promise<boolean> {
 
 async function speakNeural(text: string, my: number): Promise<'done' | 'stopped' | 'failed'> {
   const voice = neuralPref().voice;
-  const chunks = chunkText(text, 240);
+  const chunks = chunkText(text, NEURAL_CHUNK);
   const jobs = chunks.map((c) => synthesize(c, voice)); // generated in order, played as each is ready
   neuralActive = true;
   try {
@@ -152,9 +157,14 @@ async function speakNeural(text: string, my: number): Promise<'done' | 'stopped'
 
 /** Prepare narration in advance (e.g. the next stops) so it plays without waiting. */
 export function prefetch(texts: string[], lang: Lang) {
-  if (!neuralOn(lang)) return;
-  const voice = neuralPref().voice;
-  for (const t of texts) for (const c of chunkText(t, 240)) synthesize(c, voice).catch(() => undefined);
+  if (lang !== 'en' || !player || !neuralPref().on) return;
+  const go = () => {
+    const voice = neuralPref().voice;
+    for (const t of texts) for (const c of chunkText(t, NEURAL_CHUNK)) synthesize(c, voice).catch(() => undefined);
+  };
+  // Not loaded yet (first walk of the day): load, then prepare.
+  if (neuralState().status === 'ready') go();
+  else loadNeural().then(go).catch(() => undefined);
 }
 
 /**
@@ -168,7 +178,7 @@ export function speak(text: string, lang: Lang, opts: { waitForNatural?: boolean
   if (muted || !text.trim()) return Promise.resolve(false);
   const my = ++token;
   const natural = neuralOn(lang);
-  const ready = natural && isPrepared(chunkText(text, 240), neuralPref().voice);
+  const ready = natural && isPrepared(chunkText(text, NEURAL_CHUNK), neuralPref().voice);
   if (natural && !ready && !opts.waitForNatural) prefetch([text], lang);
   if (natural && (ready || opts.waitForNatural)) {
     setSpeaking(true);

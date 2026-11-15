@@ -313,3 +313,28 @@ select {
 .photo-btn.disabled { opacity: 0.45; pointer-events: none; }
 .voice-progress { width: 100%; height: 8px; margin-top: 8px; accent-color: var(--primary); }
 .natural-voice { border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+
+/* ---------- Week forecast ---------- */
+.week-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 14px 0 8px; }
+.week { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(58px, 1fr); gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.day {
+  display: grid; justify-items: center; gap: 2px; padding: 8px 4px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; font-size: 0.8rem; cursor: pointer;
+}
+.day[aria-checked='true'] { border: 2px solid var(--primary); background: var(--primary-soft); }
+.day-name { font-weight: 700; white-space: nowrap; }
+.day-icon { font-size: 1.3rem; line-height: 1.2; }
+.day-rain.wet { color: #2563eb; font-weight: 700; }
+.day.outdoor .day-kind { filter: none; }
+.week-advice { margin: 10px 0 4px; font-weight: 600; font-size: 0.95rem; }
+.header-actions { display: flex; gap: 8px; align-items: center; flex: none; }
+.settings-head { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
+.settings-head h1 { font-size: 1.4rem; }
+.hours-badge { font-size: 0.8rem; color: var(--accent); white-space: nowrap; }
+.offline { margin: 4px 0 12px; display: grid; gap: 6px; }
+.week { grid-auto-columns: minmax(68px, 1fr); }
+.day-name { font-size: 0.74rem; }
+@media (max-width: 420px) {
+  .hero h1 { font-size: 1.35rem; }
+  .hero .subtitle { font-size: 0.85rem; }
+}

@@ -115,6 +115,8 @@ export interface PlannedRoute {
   routed: boolean;
   /** One-sentence explanations of why the route looks the way it does. */
   reasons: string[];
+  /** Opening status at the estimated arrival time, for stops whose hours are known. */
+  hours?: Record<string, import('./lib/openingHours').OpenStatus>;
 }
 
 export interface SavedTour {
@@ -129,6 +131,8 @@ export interface SavedTour {
   route?: PlannedRoute;
   /** The city, for tours in a searched city (Basel and Venice are built in). */
   city?: CityData;
+  /** Saved for offline before walking (not yet walked). */
+  offline?: boolean;
 }
 
 /** A tour in progress, saved so a reload or signal loss doesn't lose it. */

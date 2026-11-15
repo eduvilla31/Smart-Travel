@@ -47,6 +47,14 @@ export const isWetCode = (c: number) => (c >= 51 && c <= 67) || (c >= 80 && c <=
 export interface ForecastData {
   /** IANA time zone of the location (Open-Meteo resolves it when asked for "auto"). */
   timezone?: string;
+  daily?: {
+    time: string[];
+    weather_code: number[];
+    temperature_2m_max: number[];
+    temperature_2m_min: number[];
+    precipitation_probability_max: (number | null)[];
+    precipitation_sum: number[];
+  };
   current: { time: string; temperature_2m: number; precipitation: number; weather_code: number; wind_speed_10m: number };
   hourly: {
     time: string[];
@@ -75,6 +83,8 @@ export interface WeatherAnalysis {
   rainFromProb?: number;
   hot: boolean;
   windy: boolean;
+  /** Set when planning for a later day, e.g. "tomorrow" or "Thursday". */
+  dayLabel?: string;
 }
 
 export async function fetchForecast(lat: number, lng: number, timezone: string): Promise<ForecastData> {
@@ -83,7 +93,8 @@ export async function fetchForecast(lat: number, lng: number, timezone: string):
     `?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}` +
     '&current=temperature_2m,precipitation,weather_code,wind_speed_10m' +
     '&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m' +
-    `&forecast_days=2&timezone=${encodeURIComponent(timezone)}`;
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum' +
+    `&forecast_days=7&timezone=${encodeURIComponent(timezone)}`;
   return fetchJson<ForecastData>(url, { cache: 'no-store' }, 10000);
 }
 
@@ -139,4 +150,101 @@ export function minutesUntilRain(data: ForecastData, withinMin = 60): number | n
   if (at < now) return 0;
   const diff = Math.round((at.getTime() - now.getTime()) / 60000);
   return diff <= withinMin ? diff : null;
+}
+
+// ---------- the week ahead ----------
+
+export type DayKind = 'outdoor' | 'mixed' | 'indoor';
+
+export interface DayPlan {
+  date: string; // YYYY-MM-DD
+  index: number; // 0 = today
+  code: number;
+  tMax: number;
+  tMin: number;
+  rainProb: number;
+  rainMm: number;
+  kind: DayKind;
+  /** Driest 3-hour daytime window, e.g. 10–13 (hours, local time). */
+  best: { from: number; to: number; prob: number } | null;
+}
+
+const DAY_FROM = 8; // walks between 8:00 and 20:00
+const DAY_TO = 20;
+
+/** Summarise the 7-day forecast: how good each day is for walking, and its best hours. */
+export function analyseWeek(data: ForecastData): DayPlan[] {
+  const d = data.daily;
+  if (!d) return [];
+  const h = data.hourly;
+  const nowHour = data.current.time.slice(0, 13);
+  return d.time.map((date, index) => {
+    const rainProb = d.precipitation_probability_max[index] ?? 0;
+    const rainMm = Math.round((d.precipitation_sum[index] ?? 0) * 10) / 10;
+    // hourly values for this day's walking hours (today: from now on)
+    const hours: { hour: number; prob: number; mm: number }[] = [];
+    h.time.forEach((t, i) => {
+      if (!t.startsWith(date)) return;
+      const hour = Number(t.slice(11, 13));
+      if (hour < DAY_FROM || hour >= DAY_TO || (index === 0 && t.slice(0, 13) < nowHour)) return;
+      hours.push({ hour, prob: h.precipitation_probability[i] ?? 0, mm: h.precipitation[i] ?? 0 });
+    });
+    let best: DayPlan['best'] = null;
+    let bestScore = Infinity;
+    for (let i = 0; i + 3 <= hours.length; i++) {
+      const w = hours.slice(i, i + 3);
+      if (w[2].hour - w[0].hour !== 2) continue;
+      const prob = Math.max(...w.map((x) => x.prob));
+      const score = prob + 20 * w.reduce((sum, x) => sum + x.mm, 0); // rain amount counts too
+      if (score < bestScore) {
+        bestScore = score;
+        best = { from: w[0].hour, to: w[2].hour + 1, prob };
+      }
+    }
+    const kind: DayKind =
+      rainProb >= 65 || rainMm >= 5 ? (best && best.prob < 30 ? 'mixed' : 'indoor') : rainProb < 35 && rainMm < 1 ? 'outdoor' : 'mixed';
+    return {
+      date,
+      index,
+      code: d.weather_code[index],
+      tMax: Math.round(d.temperature_2m_max[index]),
+      tMin: Math.round(d.temperature_2m_min[index]),
+      rainProb,
+      rainMm,
+      kind,
+      best,
+    };
+  });
+}
+
+/** Minutes from now until a day's best walking window starts (0 for today, or if unknown). */
+export function minutesUntilDay(data: ForecastData, day: DayPlan): number {
+  if (day.index === 0 || !day.best) return 0;
+  const now = new Date(data.current.time);
+  const at = new Date(`${day.date}T${String(day.best.from).padStart(2, '0')}:00`);
+  return Math.max(0, Math.round((at.getTime() - now.getTime()) / 60000));
+}
+
+export type WeekAdvice =
+  | { kind: 'allDry' }
+  | { kind: 'todayBest' }
+  | { kind: 'wetTodayDryLater'; day: DayPlan }
+  | { kind: 'bestHoursToday'; from: number; to: number }
+  | { kind: 'wetWeek'; day: DayPlan | null }
+  | { kind: 'none' };
+
+/** One piece of advice: do more today, wait for a dry day, or pick the best hours. */
+export function weekAdvice(days: DayPlan[]): WeekAdvice {
+  if (!days.length) return { kind: 'none' };
+  const [today, ...later] = days;
+  const nextDry = later.find((d) => d.kind === 'outdoor');
+  if (days.every((d) => d.kind === 'outdoor')) return { kind: 'allDry' };
+  if (today.kind === 'outdoor' && later.slice(0, 2).some((d) => d.kind !== 'outdoor')) return { kind: 'todayBest' };
+  if (today.kind === 'indoor' && nextDry) return { kind: 'wetTodayDryLater', day: nextDry };
+  if (today.kind === 'mixed' && today.best) return { kind: 'bestHoursToday', from: today.best.from, to: today.best.to };
+  if (today.kind === 'indoor') {
+    const leastWet = later.filter((d) => d.kind === 'mixed').sort((a, b) => a.rainProb - b.rainProb)[0] ?? null;
+    return { kind: 'wetWeek', day: leastWet };
+  }
+  return { kind: 'none' };
 }
